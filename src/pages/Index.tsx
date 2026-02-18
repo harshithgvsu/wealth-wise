@@ -6,32 +6,61 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  LayoutDashboard,
+  LineChart,
+  Settings,
+  LogOut,
 } from "lucide-react";
 import { useExpenses } from "@/hooks/useExpenses";
+import { useAuth } from "@/hooks/useAuth";
 import { StatCard } from "@/components/StatCard";
 import { ExpenseForm } from "@/components/ExpenseForm";
 import { ExpenseList } from "@/components/ExpenseList";
 import { SpendingChart } from "@/components/SpendingChart";
 import { AIInsights } from "@/components/AIInsights";
+import { AIChat } from "@/components/AIChat";
+import { AuthPage } from "@/components/AuthPage";
+import { OnboardingWizard } from "@/components/OnboardingWizard";
+import { InvestmentSuggestions } from "@/components/InvestmentSuggestions";
+import { ProfileSettings } from "@/components/ProfileSettings";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
 
+type Tab = "dashboard" | "investments" | "settings";
+
 export default function Index() {
+  const { user, isLoggedIn, login, signup, logout, updateProfile } = useAuth();
+  const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
 
   const { expenses, addExpense, deleteExpense, getMonthExpenses, getTotalByCategory } =
-    useExpenses();
+    useExpenses(user?.id);
+
+  // ---- Auth gates ----
+  if (!isLoggedIn) {
+    return <AuthPage onLogin={login} onSignup={signup} />;
+  }
+
+  // Onboarding: if net income not set yet
+  if (user && user.netMonthlyIncome === 0) {
+    return (
+      <OnboardingWizard
+        userName={user.name}
+        onComplete={(profile) => updateProfile(profile)}
+      />
+    );
+  }
 
   const monthExpenses = getMonthExpenses(year, month);
   const totalByCategory = getTotalByCategory(monthExpenses);
   const monthTotal = monthExpenses.reduce((s, e) => s + e.amount, 0);
 
-  // Previous month for trend
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
   const prevExpenses = getMonthExpenses(prevYear, prevMonth);
@@ -43,20 +72,27 @@ export default function Index() {
   const avgDaily = uniqueDays > 0 ? monthTotal / uniqueDays : 0;
 
   const goBack = () => {
-    if (month === 1) { setMonth(12); setYear(y => y - 1); }
-    else setMonth(m => m - 1);
+    if (month === 1) { setMonth(12); setYear((y) => y - 1); }
+    else setMonth((m) => m - 1);
   };
   const goForward = () => {
-    if (month === 12) { setMonth(1); setYear(y => y + 1); }
-    else setMonth(m => m + 1);
+    if (month === 12) { setMonth(1); setYear((y) => y + 1); }
+    else setMonth((m) => m + 1);
   };
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
 
+  const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "investments", label: "Invest", icon: LineChart },
+    { id: "settings", label: "Profile", icon: Settings },
+  ];
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20 sm:pb-0">
       {/* Header */}
-      <header className="border-b border-navy-border bg-navy-card/60 backdrop-blur-sm sticky top-0 z-10">
+      <header className="border-b border-border bg-card/60 backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          {/* Logo */}
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-gradient-primary flex items-center justify-center pulse-glow">
               <TrendingUp size={14} className="text-primary-foreground" />
@@ -66,90 +102,170 @@ export default function Index() {
             </span>
           </div>
 
-          {/* Month navigation */}
+          {/* Desktop nav */}
+          <nav className="hidden sm:flex items-center gap-1">
+            {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === id
+                    ? "bg-primary/20 text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                }`}
+              >
+                <Icon size={15} /> {label}
+              </button>
+            ))}
+          </nav>
+
+          {/* Month nav (only on dashboard) + user */}
           <div className="flex items-center gap-2">
+            {activeTab === "dashboard" && (
+              <>
+                <button onClick={goBack} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors">
+                  <ChevronLeft size={16} />
+                </button>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-secondary min-w-[130px] justify-center">
+                  <CalendarDays size={13} className="text-muted-foreground" />
+                  <span className="text-sm font-medium text-foreground">{MONTH_NAMES[month - 1].slice(0, 3)} {year}</span>
+                </div>
+                <button
+                  onClick={goForward}
+                  disabled={isCurrentMonth}
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </>
+            )}
             <button
-              onClick={goBack}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-navy-surface transition-colors"
+              onClick={logout}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-muted-foreground hover:text-destructive transition-colors text-sm"
+              title="Sign out"
             >
-              <ChevronLeft size={16} />
-            </button>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-navy-surface min-w-[140px] justify-center">
-              <CalendarDays size={13} className="text-muted-foreground" />
-              <span className="text-sm font-medium text-foreground">
-                {MONTH_NAMES[month - 1]} {year}
-              </span>
-            </div>
-            <button
-              onClick={goForward}
-              disabled={isCurrentMonth}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-navy-surface transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ChevronRight size={16} />
+              <LogOut size={14} />
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-        {/* Stats row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatCard
-            title="Month Total"
-            value={`$${monthTotal.toFixed(2)}`}
-            trend={trend}
-            icon={<Wallet size={16} />}
-            variant="primary"
-            delay={0}
-          />
-          <StatCard
-            title="Daily Average"
-            value={`$${avgDaily.toFixed(2)}`}
-            subtitle={`${uniqueDays} active days`}
-            icon={<BarChart3 size={16} />}
-            variant="default"
-            delay={80}
-          />
-          <StatCard
-            title="Top Category"
-            value={topCategory ? `$${topCategory[1].toFixed(0)}` : "$0"}
-            subtitle={topCategory ? topCategory[0] : "—"}
-            icon={<TrendingUp size={16} />}
-            variant="gold"
-            delay={160}
-          />
-          <StatCard
-            title="Transactions"
-            value={String(monthExpenses.length)}
-            subtitle={`${prevExpenses.length} last month`}
-            icon={<CalendarDays size={16} />}
-            variant="default"
-            delay={240}
-          />
-        </div>
+      {/* Main */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
+        {activeTab === "dashboard" && (
+          <div className="space-y-4">
+            {/* Greeting */}
+            <div>
+              <h1 className="text-xl font-bold text-foreground">
+                Hey, <span className="text-gradient-primary">{user?.name.split(" ")[0]}</span> 👋
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {MONTH_NAMES[month - 1]} {year} spending overview
+              </p>
+            </div>
 
-        {/* Main content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Left column: form + list */}
-          <div className="lg:col-span-1 space-y-4">
-            <ExpenseForm onAdd={addExpense} />
-            <ExpenseList expenses={monthExpenses} onDelete={deleteExpense} />
-          </div>
+            {/* Stats row */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <StatCard title="Month Total" value={`$${monthTotal.toFixed(2)}`} trend={trend} icon={<Wallet size={16} />} variant="primary" delay={0} />
+              <StatCard title="Daily Average" value={`$${avgDaily.toFixed(2)}`} subtitle={`${uniqueDays} active days`} icon={<BarChart3 size={16} />} variant="default" delay={80} />
+              <StatCard title="Top Category" value={topCategory ? `$${topCategory[1].toFixed(0)}` : "$0"} subtitle={topCategory ? topCategory[0] : "—"} icon={<TrendingUp size={16} />} variant="gold" delay={160} />
+              <StatCard title="Transactions" value={String(monthExpenses.length)} subtitle={`${prevExpenses.length} last month`} icon={<CalendarDays size={16} />} variant="default" delay={240} />
+            </div>
 
-          {/* Right column: charts + AI */}
-          <div className="lg:col-span-2 space-y-4">
-            <SpendingChart
-              expenses={expenses}
-              totalByCategory={totalByCategory}
-            />
-            <AIInsights
-              expenses={monthExpenses}
-              totalByCategory={totalByCategory}
-              monthTotal={monthTotal}
-            />
+            {/* Budget bar */}
+            {user && user.netMonthlyIncome > 0 && (() => {
+              const fixedExpenses = user.rentMortgage + user.carPayment + user.insurancePremiums + user.subscriptions + user.otherFixedExpenses;
+              const disposable = user.netMonthlyIncome - fixedExpenses;
+              const pct = Math.min(100, (monthTotal / disposable) * 100);
+              const savingsTarget = (user.savingsGoalPercent / 100) * user.netMonthlyIncome;
+              const investable = Math.max(0, disposable - monthTotal - savingsTarget * 0.5);
+              return (
+                <div className="glass-card rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-foreground">Monthly Budget</span>
+                    <span className={`text-xs font-medium ${pct > 90 ? "text-destructive" : pct > 70 ? "text-accent" : "text-primary"}`}>
+                      ${monthTotal.toFixed(0)} / ${disposable.toFixed(0)} disposable
+                    </span>
+                  </div>
+                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${pct > 90 ? "bg-destructive" : pct > 70 ? "bg-accent" : "bg-primary"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
+                    <span>💰 Investable this month: <strong className="text-primary">${investable.toFixed(0)}</strong></span>
+                    <span>{pct.toFixed(0)}% used</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Main grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-1 space-y-4">
+                <ExpenseForm onAdd={addExpense} />
+                <ExpenseList expenses={monthExpenses} onDelete={deleteExpense} />
+              </div>
+              <div className="lg:col-span-2 space-y-4">
+                <SpendingChart expenses={expenses} totalByCategory={totalByCategory} />
+                <AIInsights expenses={monthExpenses} totalByCategory={totalByCategory} monthTotal={monthTotal} />
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {activeTab === "investments" && user && (
+          <div className="space-y-4">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">
+                Investment <span className="text-gradient-primary">Suggestions</span>
+              </h1>
+              <p className="text-sm text-muted-foreground">Personalized based on your spending trends & goals</p>
+            </div>
+            <InvestmentSuggestions expenses={expenses} userProfile={user} />
+          </div>
+        )}
+
+        {activeTab === "settings" && user && (
+          <div className="space-y-4">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">
+                Financial <span className="text-gradient-primary">Profile</span>
+              </h1>
+              <p className="text-sm text-muted-foreground">Update your income, expenses & investment goals</p>
+            </div>
+            <ProfileSettings user={user} onUpdate={updateProfile} onLogout={logout} />
+          </div>
+        )}
       </main>
+
+      {/* Bottom nav (mobile) */}
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-sm border-t border-border">
+        <div className="flex items-center justify-around px-2 py-2 safe-bottom">
+          {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className={`flex flex-col items-center gap-1 px-5 py-1.5 rounded-xl transition-colors ${
+                activeTab === id ? "text-primary" : "text-muted-foreground"
+              }`}
+            >
+              <Icon size={20} />
+              <span className="text-[10px] font-medium">{label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {/* AI Chat FAB */}
+      {user && (
+        <AIChat
+          expenses={expenses}
+          userProfile={user}
+          onAddExpense={addExpense}
+        />
+      )}
     </div>
   );
 }
