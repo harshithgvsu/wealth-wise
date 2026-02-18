@@ -41,7 +41,7 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   Other: "hsl(215 20% 55%)",
 };
 
-const STORAGE_KEY = "wealthwise_expenses";
+const STORAGE_KEY = (userId?: string) => `wealthwise_expenses_${userId || "default"}`;
 
 const SAMPLE_EXPENSES: Expense[] = [
   { id: "s1", amount: 52.3, category: "Food & Dining", description: "Grocery store", date: "2026-02-01", createdAt: 1 },
@@ -61,10 +61,11 @@ const SAMPLE_EXPENSES: Expense[] = [
   { id: "s15", amount: 30.0, category: "Education", description: "Online course", date: "2026-02-17", createdAt: 15 },
 ];
 
-export function useExpenses() {
+export function useExpenses(userId?: string) {
+  const storageKey = STORAGE_KEY(userId);
   const [expenses, setExpenses] = useState<Expense[]>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed.length > 0) return parsed;
@@ -74,8 +75,8 @@ export function useExpenses() {
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses));
-  }, [expenses]);
+    localStorage.setItem(storageKey, JSON.stringify(expenses));
+  }, [expenses, storageKey]);
 
   const addExpense = (expense: Omit<Expense, "id" | "createdAt">) => {
     const newExpense: Expense = {
