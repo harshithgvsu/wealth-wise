@@ -10,6 +10,7 @@ import {
   LineChart,
   Settings,
   LogOut,
+  CreditCard,
 } from "lucide-react";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useAuth } from "@/hooks/useAuth";
@@ -23,13 +24,14 @@ import { AuthPage } from "@/components/AuthPage";
 import { OnboardingWizard } from "@/components/OnboardingWizard";
 import { InvestmentSuggestions } from "@/components/InvestmentSuggestions";
 import { ProfileSettings } from "@/components/ProfileSettings";
+import { CreditCardHub } from "@/components/CreditCardHub";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
 
-type Tab = "dashboard" | "investments" | "settings";
+type Tab = "dashboard" | "investments" | "cards" | "settings";
 
 export default function Index() {
   const { user, isLoggedIn, login, signup, logout, updateProfile } = useAuth();
@@ -84,6 +86,7 @@ export default function Index() {
   const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "investments", label: "Invest", icon: LineChart },
+    { id: "cards", label: "Cards", icon: CreditCard },
     { id: "settings", label: "Profile", icon: Settings },
   ];
 
@@ -224,6 +227,18 @@ export default function Index() {
               <p className="text-sm text-muted-foreground">Personalized based on your spending trends & goals</p>
             </div>
             <InvestmentSuggestions expenses={expenses} userProfile={user} />
+          </div>
+        )}
+
+        {activeTab === "cards" && user && (
+          <div className="space-y-4">
+            <div>
+              <h1 className="text-xl font-bold text-foreground">
+                Credit Card <span className="text-gradient-gold">Hub</span>
+              </h1>
+              <p className="text-sm text-muted-foreground">Maximize rewards · track utilization · find your next card</p>
+            </div>
+            <CreditCardHub expenses={expenses} userProfile={user} />
           </div>
         )}
 
