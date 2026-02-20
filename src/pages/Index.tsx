@@ -11,6 +11,8 @@ import {
   Settings,
   LogOut,
   CreditCard,
+  PlusCircle,
+  Sparkles,
 } from "lucide-react";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useAuth } from "@/hooks/useAuth";
@@ -167,54 +169,89 @@ export default function Index() {
               </p>
             </div>
 
-            {/* Stats row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <StatCard title="Month Total" value={`$${monthTotal.toFixed(2)}`} trend={trend} icon={<Wallet size={16} />} variant="primary" delay={0} />
-              <StatCard title="Daily Average" value={`$${avgDaily.toFixed(2)}`} subtitle={`${uniqueDays} active days`} icon={<BarChart3 size={16} />} variant="default" delay={80} />
-              <StatCard title="Top Category" value={topCategory ? `$${topCategory[1].toFixed(0)}` : "$0"} subtitle={topCategory ? topCategory[0] : "—"} icon={<TrendingUp size={16} />} variant="gold" delay={160} />
-              <StatCard title="Transactions" value={String(monthExpenses.length)} subtitle={`${prevExpenses.length} last month`} icon={<CalendarDays size={16} />} variant="default" delay={240} />
-            </div>
-
-            {/* Budget bar */}
-            {user && user.netMonthlyIncome > 0 && (() => {
-              const fixedExpenses = user.rentMortgage + user.carPayment + user.insurancePremiums + user.subscriptions + user.otherFixedExpenses;
-              const disposable = user.netMonthlyIncome - fixedExpenses;
-              const pct = Math.min(100, (monthTotal / disposable) * 100);
-              const savingsTarget = (user.savingsGoalPercent / 100) * user.netMonthlyIncome;
-              const investable = Math.max(0, disposable - monthTotal - savingsTarget * 0.5);
-              return (
-                <div className="glass-card rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-foreground">Monthly Budget</span>
-                    <span className={`text-xs font-medium ${pct > 90 ? "text-destructive" : pct > 70 ? "text-accent" : "text-primary"}`}>
-                      ${monthTotal.toFixed(0)} / ${disposable.toFixed(0)} disposable
-                    </span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${pct > 90 ? "bg-destructive" : pct > 70 ? "bg-accent" : "bg-primary"}`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
-                    <span>💰 Investable this month: <strong className="text-primary">${investable.toFixed(0)}</strong></span>
-                    <span>{pct.toFixed(0)}% used</span>
+            {/* Empty state — no expenses logged yet */}
+            {expenses.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-6 animate-fade-in">
+                <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <Sparkles size={36} className="text-primary" />
+                </div>
+                <div className="text-center space-y-1.5 max-w-xs">
+                  <h2 className="text-lg font-bold text-foreground">Your dashboard is ready</h2>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Start logging your first expense and your charts, insights, and spending overview will appear here automatically.
+                  </p>
+                </div>
+                <div className="glass-card border border-primary/20 rounded-xl p-5 w-full max-w-sm space-y-3">
+                  <p className="text-xs font-semibold text-primary uppercase tracking-wider">Quick tips to get started</p>
+                  <div className="space-y-2">
+                    {[
+                      { icon: "💬", text: "Ask the AI assistant to log an expense for you" },
+                      { icon: "🎙️", text: 'Say "Add $12 lunch" via voice input' },
+                      { icon: "✏️", text: "Use the form below to add your first transaction" },
+                    ].map((tip) => (
+                      <div key={tip.text} className="flex items-start gap-2.5 text-sm text-muted-foreground">
+                        <span className="text-base leading-snug">{tip.icon}</span>
+                        <span>{tip.text}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              );
-            })()}
+                <div className="w-full max-w-sm">
+                  <ExpenseForm onAdd={addExpense} />
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Stats row */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <StatCard title="Month Total" value={`$${monthTotal.toFixed(2)}`} trend={trend} icon={<Wallet size={16} />} variant="primary" delay={0} />
+                  <StatCard title="Daily Average" value={`$${avgDaily.toFixed(2)}`} subtitle={`${uniqueDays} active days`} icon={<BarChart3 size={16} />} variant="default" delay={80} />
+                  <StatCard title="Top Category" value={topCategory ? `$${topCategory[1].toFixed(0)}` : "$0"} subtitle={topCategory ? topCategory[0] : "—"} icon={<TrendingUp size={16} />} variant="gold" delay={160} />
+                  <StatCard title="Transactions" value={String(monthExpenses.length)} subtitle={`${prevExpenses.length} last month`} icon={<CalendarDays size={16} />} variant="default" delay={240} />
+                </div>
 
-            {/* Main grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-1 space-y-4">
-                <ExpenseForm onAdd={addExpense} />
-                <ExpenseList expenses={monthExpenses} onDelete={deleteExpense} />
-              </div>
-              <div className="lg:col-span-2 space-y-4">
-                <SpendingChart expenses={expenses} totalByCategory={totalByCategory} />
-                <AIInsights expenses={monthExpenses} totalByCategory={totalByCategory} monthTotal={monthTotal} />
-              </div>
-            </div>
+                {/* Budget bar */}
+                {user && user.netMonthlyIncome > 0 && (() => {
+                  const fixedExpenses = user.rentMortgage + user.carPayment + user.insurancePremiums + user.subscriptions + user.otherFixedExpenses;
+                  const disposable = user.netMonthlyIncome - fixedExpenses;
+                  const pct = Math.min(100, (monthTotal / disposable) * 100);
+                  const savingsTarget = (user.savingsGoalPercent / 100) * user.netMonthlyIncome;
+                  const investable = Math.max(0, disposable - monthTotal - savingsTarget * 0.5);
+                  return (
+                    <div className="glass-card rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-foreground">Monthly Budget</span>
+                        <span className={`text-xs font-medium ${pct > 90 ? "text-destructive" : pct > 70 ? "text-accent" : "text-primary"}`}>
+                          ${monthTotal.toFixed(0)} / ${disposable.toFixed(0)} disposable
+                        </span>
+                      </div>
+                      <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${pct > 90 ? "bg-destructive" : pct > 70 ? "bg-accent" : "bg-primary"}`}
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
+                        <span>💰 Investable this month: <strong className="text-primary">${investable.toFixed(0)}</strong></span>
+                        <span>{pct.toFixed(0)}% used</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Main grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="lg:col-span-1 space-y-4">
+                    <ExpenseForm onAdd={addExpense} />
+                    <ExpenseList expenses={monthExpenses} onDelete={deleteExpense} />
+                  </div>
+                  <div className="lg:col-span-2 space-y-4">
+                    <SpendingChart expenses={expenses} totalByCategory={totalByCategory} />
+                    <AIInsights expenses={monthExpenses} totalByCategory={totalByCategory} monthTotal={monthTotal} />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         )}
 
