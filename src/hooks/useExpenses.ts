@@ -68,10 +68,10 @@ export function useExpenses(userId?: string) {
       const stored = localStorage.getItem(storageKey);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       }
     } catch {}
-    return SAMPLE_EXPENSES;
+    return [];
   });
 
   useEffect(() => {
