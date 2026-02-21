@@ -313,8 +313,26 @@ function AddCardSheet({
   // custom fields
   const [customName, setCustomName] = useState("");
   const [customIssuer, setCustomIssuer] = useState("");
+  const [customNetwork, setCustomNetwork] = useState<"Visa" | "Mastercard" | "Amex" | "Discover">("Visa");
   const [customFee, setCustomFee] = useState("0");
   const [customBase, setCustomBase] = useState("1");
+  const [customRewardType, setCustomRewardType] = useState<"cashback" | "points" | "miles">("cashback");
+  const [customCentsPerPoint, setCustomCentsPerPoint] = useState("1");
+  const [customRewards, setCustomRewards] = useState<{ category: string; rate: string }[]>([]);
+  const [customSignupBonus, setCustomSignupBonus] = useState("");
+  const [customSignupSpend, setCustomSignupSpend] = useState("");
+
+  const NETWORK_COLORS: Record<string, { cardBg: string; color: string }> = {
+    Visa: { cardBg: "from-blue-900 via-blue-800 to-blue-600", color: "#2563EB" },
+    Mastercard: { cardBg: "from-red-900 via-orange-800 to-orange-600", color: "#EA580C" },
+    Amex: { cardBg: "from-cyan-900 via-teal-800 to-teal-600", color: "#0D9488" },
+    Discover: { cardBg: "from-orange-800 via-orange-600 to-orange-400", color: "#F97316" },
+  };
+
+  const addCustomRewardRow = () => setCustomRewards((r) => [...r, { category: "", rate: "" }]);
+  const updateCustomReward = (i: number, key: "category" | "rate", val: string) =>
+    setCustomRewards((r) => r.map((row, idx) => (idx === i ? { ...row, [key]: val } : row)));
+  const removeCustomReward = (i: number) => setCustomRewards((r) => r.filter((_, idx) => idx !== i));
 
   const handleAdd = () => {
     if (mode === "preset" && selected) {
@@ -339,20 +357,27 @@ function AddCardSheet({
       };
       onAdd(card);
     } else if (mode === "custom" && customName && customIssuer) {
+      const rewards: Record<string, number> = {};
+      for (const r of customRewards) {
+        if (r.category && r.rate) rewards[r.category] = Number(r.rate) || 1;
+      }
+      const nc = NETWORK_COLORS[customNetwork];
       const card: UserCard = {
         id: crypto.randomUUID(),
         name: customName,
         issuer: customIssuer,
-        network: "Visa",
+        network: customNetwork,
         annualFee: Number(customFee) || 0,
-        rewardType: "cashback",
+        rewardType: customRewardType,
         baseReward: Number(customBase) || 1,
-        rewards: {},
-        centsPerPoint: 1,
-        cardBg: "from-emerald-900 via-emerald-800 to-emerald-600",
-        color: "#10B981",
+        rewards,
+        centsPerPoint: Number(customCentsPerPoint) || 1,
+        cardBg: nc.cardBg,
+        color: nc.color,
         creditLimit: creditLimit ? Number(creditLimit) : undefined,
         currentBalance: balance ? Number(balance) : undefined,
+        signupBonus: customSignupBonus || undefined,
+        signupSpend: customSignupSpend ? Number(customSignupSpend) : undefined,
       };
       onAdd(card);
     }
@@ -406,7 +431,25 @@ function AddCardSheet({
         ) : (
           <div className="space-y-3 mb-4">
             <input className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border placeholder:text-muted-foreground" placeholder="Card name (e.g. My Visa)" value={customName} onChange={(e) => setCustomName(e.target.value)} />
-            <input className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border placeholder:text-muted-foreground" placeholder="Issuer (e.g. Chase)" value={customIssuer} onChange={(e) => setCustomIssuer(e.target.value)} />
+            <input className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border placeholder:text-muted-foreground" placeholder="Issuer (e.g. Chase, Capital One)" value={customIssuer} onChange={(e) => setCustomIssuer(e.target.value)} />
+
+            {/* Network & Reward Type */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Network</label>
+                <select className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" value={customNetwork} onChange={(e) => setCustomNetwork(e.target.value as any)}>
+                  {(["Visa", "Mastercard", "Amex", "Discover"] as const).map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Reward Type</label>
+                <select className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" value={customRewardType} onChange={(e) => setCustomRewardType(e.target.value as any)}>
+                  {(["cashback", "points", "miles"] as const).map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Base Reward & Annual Fee */}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Annual Fee ($)</label>
@@ -414,7 +457,44 @@ function AddCardSheet({
               </div>
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Base Reward (%/x)</label>
-                <input type="number" className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" value={customBase} onChange={(e) => setCustomBase(e.target.value)} />
+                <input type="number" step="0.5" className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" value={customBase} onChange={(e) => setCustomBase(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Cents per point (for points/miles) */}
+            {customRewardType !== "cashback" && (
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Cents per point/mile (valuation)</label>
+                <input type="number" step="0.1" className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" value={customCentsPerPoint} onChange={(e) => setCustomCentsPerPoint(e.target.value)} />
+              </div>
+            )}
+
+            {/* Category-specific rewards */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs text-muted-foreground">Bonus Categories</label>
+                <button type="button" onClick={addCustomRewardRow} className="text-[10px] text-primary font-medium flex items-center gap-0.5">
+                  <Plus size={10} /> Add category
+                </button>
+              </div>
+              {customRewards.map((r, i) => (
+                <div key={i} className="flex gap-2 mb-1.5">
+                  <input className="flex-1 bg-secondary text-foreground rounded-lg px-2 py-1.5 text-xs border border-border placeholder:text-muted-foreground" placeholder="e.g. Travel" value={r.category} onChange={(e) => updateCustomReward(i, "category", e.target.value)} />
+                  <input type="number" step="0.5" className="w-16 bg-secondary text-foreground rounded-lg px-2 py-1.5 text-xs border border-border" placeholder="x" value={r.rate} onChange={(e) => updateCustomReward(i, "rate", e.target.value)} />
+                  <button type="button" onClick={() => removeCustomReward(i)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={12} /></button>
+                </div>
+              ))}
+            </div>
+
+            {/* Signup Bonus */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Signup Bonus</label>
+                <input className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border placeholder:text-muted-foreground" placeholder="e.g. 50,000 pts" value={customSignupBonus} onChange={(e) => setCustomSignupBonus(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Required Spend ($)</label>
+                <input type="number" className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" placeholder="Optional" value={customSignupSpend} onChange={(e) => setCustomSignupSpend(e.target.value)} />
               </div>
             </div>
           </div>

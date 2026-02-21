@@ -94,7 +94,7 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
             <SelectTrigger className="bg-navy-surface border-navy-border text-foreground focus:border-emerald/50 focus:ring-emerald/20">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
-            <SelectContent className="bg-navy-card border-navy-border">
+            <SelectContent className="bg-navy-card border-navy-border z-[60]" position="popper" sideOffset={4}>
               {CATEGORIES.map((cat) => (
                 <SelectItem
                   key={cat}
