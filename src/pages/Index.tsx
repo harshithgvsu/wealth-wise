@@ -43,7 +43,7 @@ export default function Index() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
 
-  const { expenses, addExpense, deleteExpense, getMonthExpenses, getTotalByCategory } =
+  const { expenses, addExpense, deleteExpense, resetExpenses, getMonthExpenses, getTotalByCategory } =
     useExpenses(user?.id);
 
   // ---- Auth gates ----
@@ -287,7 +287,7 @@ export default function Index() {
               </h1>
               <p className="text-sm text-muted-foreground">Update your income, expenses & investment goals</p>
             </div>
-            <ProfileSettings user={user} onUpdate={updateProfile} onLogout={logout} />
+            <ProfileSettings user={user} onUpdate={updateProfile} onLogout={logout} onResetExpenses={resetExpenses} expenseCount={expenses.length} />
           </div>
         )}
       </main>

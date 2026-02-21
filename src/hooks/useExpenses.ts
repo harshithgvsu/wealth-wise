@@ -92,6 +92,11 @@ export function useExpenses(userId?: string) {
     setExpenses((prev) => prev.filter((e) => e.id !== id));
   };
 
+  const resetExpenses = () => {
+    setExpenses([]);
+    localStorage.removeItem(storageKey);
+  };
+
   const getMonthExpenses = (year: number, month: number) => {
     return expenses.filter((e) => {
       const d = new Date(e.date);
@@ -119,6 +124,7 @@ export function useExpenses(userId?: string) {
     expenses,
     addExpense,
     deleteExpense,
+    resetExpenses,
     getMonthExpenses,
     getTotalByCategory,
     getDailyTotals,

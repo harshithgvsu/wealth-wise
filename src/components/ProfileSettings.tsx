@@ -7,6 +7,8 @@ import {
   ChevronRight,
   LogOut,
   Save,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { UserProfile } from "@/hooks/useAuth";
 
@@ -14,6 +16,8 @@ interface ProfileSettingsProps {
   user: UserProfile;
   onUpdate: (updates: Partial<Omit<UserProfile, "id" | "email" | "createdAt">>) => void;
   onLogout: () => void;
+  onResetExpenses: () => void;
+  expenseCount: number;
 }
 
 function NumInput({
@@ -45,10 +49,11 @@ function NumInput({
 
 type Section = "income" | "benefits" | "expenses" | "goals";
 
-export function ProfileSettings({ user, onUpdate, onLogout }: ProfileSettingsProps) {
+export function ProfileSettings({ user, onUpdate, onLogout, onResetExpenses, expenseCount }: ProfileSettingsProps) {
   const [openSection, setOpenSection] = useState<Section | null>(null);
   const [form, setForm] = useState({ ...user });
   const [saved, setSaved] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const set = (key: keyof typeof form, value: unknown) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -218,6 +223,52 @@ export function ProfileSettings({ user, onUpdate, onLogout }: ProfileSettingsPro
         <Save size={16} />
         {saved ? "Changes Saved ✓" : "Save Changes"}
       </button>
+      {/* Reset all data */}
+      <div className="glass-card rounded-2xl p-4 border border-destructive/20 space-y-3">
+        <div className="flex items-center gap-2">
+          <Trash2 size={15} className="text-destructive" />
+          <span className="text-sm font-semibold text-foreground">Reset All Expenses</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Permanently delete all {expenseCount} expense{expenseCount !== 1 ? "s" : ""} and start fresh. This cannot be undone.
+        </p>
+        {!showResetConfirm ? (
+          <button
+            onClick={() => setShowResetConfirm(true)}
+            disabled={expenseCount === 0}
+            className="w-full py-2.5 rounded-xl text-sm font-medium border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Reset Everything
+          </button>
+        ) : (
+          <div className="space-y-2 p-3 bg-destructive/5 rounded-xl border border-destructive/20">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle size={14} />
+              <span className="text-xs font-semibold">Are you absolutely sure?</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This will delete all {expenseCount} transactions, charts, and trends permanently.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="flex-1 py-2 rounded-lg text-xs font-medium border border-border text-muted-foreground hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onResetExpenses();
+                  setShowResetConfirm(false);
+                }}
+                className="flex-1 py-2 rounded-lg text-xs font-medium bg-destructive text-destructive-foreground hover:opacity-90 transition-colors"
+              >
+                Yes, Delete All
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
