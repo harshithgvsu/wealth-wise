@@ -11,8 +11,8 @@ import {
   Settings,
   LogOut,
   CreditCard,
-  PlusCircle,
   Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { useExpenses } from "@/hooks/useExpenses";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,8 +36,9 @@ const MONTH_NAMES = [
 type Tab = "dashboard" | "investments" | "cards" | "settings";
 
 export default function Index() {
-  const { user, isLoggedIn, login, signup, logout, updateProfile } = useAuth();
+  const { user, isLoggedIn, login, signup, logout, updateProfile, resetPassword } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -48,7 +49,7 @@ export default function Index() {
 
   // ---- Auth gates ----
   if (!isLoggedIn) {
-    return <AuthPage onLogin={login} onSignup={signup} />;
+    return <AuthPage onLogin={login} onSignup={signup} onResetPassword={resetPassword} />;
   }
 
   // Onboarding: if net income not set yet
@@ -85,6 +86,8 @@ export default function Index() {
   };
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
 
+  const handleLogoutRequest = () => setShowLogoutConfirm(true);
+
   const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "investments", label: "Invest", icon: LineChart },
@@ -94,10 +97,43 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background pb-20 sm:pb-0">
+      {/* Logout Confirmation Overlay */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-card rounded-2xl p-6 w-full max-w-xs space-y-4 animate-in-up">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+                <AlertTriangle size={20} className="text-destructive" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground text-sm">Sign Out?</p>
+                <p className="text-xs text-muted-foreground">Your data is saved locally</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              You can sign back in anytime with the same email and password to access your expenses and settings.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium border border-border text-muted-foreground hover:bg-secondary transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { logout(); setShowLogoutConfirm(false); }}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-destructive text-destructive-foreground hover:opacity-90 transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="border-b border-border bg-card/60 backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          {/* Logo */}
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-gradient-primary flex items-center justify-center pulse-glow">
               <TrendingUp size={14} className="text-primary-foreground" />
@@ -107,7 +143,6 @@ export default function Index() {
             </span>
           </div>
 
-          {/* Desktop nav */}
           <nav className="hidden sm:flex items-center gap-1">
             {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
               <button
@@ -124,7 +159,6 @@ export default function Index() {
             ))}
           </nav>
 
-          {/* Month nav (only on dashboard) + user */}
           <div className="flex items-center gap-2">
             {activeTab === "dashboard" && (
               <>
@@ -145,7 +179,7 @@ export default function Index() {
               </>
             )}
             <button
-              onClick={logout}
+              onClick={handleLogoutRequest}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-muted-foreground hover:text-destructive transition-colors text-sm"
               title="Sign out"
             >
@@ -159,7 +193,6 @@ export default function Index() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-5">
         {activeTab === "dashboard" && (
           <div className="space-y-4">
-            {/* Greeting */}
             <div>
               <h1 className="text-xl font-bold text-foreground">
                 Hey, <span className="text-gradient-primary">{user?.name.split(" ")[0]}</span> 👋
@@ -169,7 +202,6 @@ export default function Index() {
               </p>
             </div>
 
-            {/* Empty state — no expenses logged yet */}
             {expenses.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 gap-6 animate-fade-in">
                 <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -202,7 +234,6 @@ export default function Index() {
               </div>
             ) : (
               <>
-                {/* Stats row */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <StatCard title="Month Total" value={`$${monthTotal.toFixed(2)}`} trend={trend} icon={<Wallet size={16} />} variant="primary" delay={0} />
                   <StatCard title="Daily Average" value={`$${avgDaily.toFixed(2)}`} subtitle={`${uniqueDays} active days`} icon={<BarChart3 size={16} />} variant="default" delay={80} />
@@ -210,7 +241,6 @@ export default function Index() {
                   <StatCard title="Transactions" value={String(monthExpenses.length)} subtitle={`${prevExpenses.length} last month`} icon={<CalendarDays size={16} />} variant="default" delay={240} />
                 </div>
 
-                {/* Budget bar */}
                 {user && user.netMonthlyIncome > 0 && (() => {
                   const fixedExpenses = user.rentMortgage + user.carPayment + user.insurancePremiums + user.subscriptions + user.otherFixedExpenses;
                   const disposable = user.netMonthlyIncome - fixedExpenses;
@@ -239,7 +269,6 @@ export default function Index() {
                   );
                 })()}
 
-                {/* Main grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="lg:col-span-1 space-y-4">
                     <ExpenseForm onAdd={addExpense} />
@@ -287,7 +316,7 @@ export default function Index() {
               </h1>
               <p className="text-sm text-muted-foreground">Update your income, expenses & investment goals</p>
             </div>
-            <ProfileSettings user={user} onUpdate={updateProfile} onLogout={logout} onResetExpenses={resetExpenses} expenseCount={expenses.length} />
+            <ProfileSettings user={user} onUpdate={updateProfile} onLogout={handleLogoutRequest} onResetExpenses={resetExpenses} expenseCount={expenses.length} />
           </div>
         )}
       </main>
