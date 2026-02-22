@@ -25,8 +25,8 @@ export interface AuthState {
   isLoggedIn: boolean;
 }
 
-const USERS_KEY = "wealthwise_users";
-const SESSION_KEY = "wealthwise_session";
+const USERS_KEY = "spendwise_users";
+const SESSION_KEY = "spendwise_session";
 
 function getUsers(): Record<string, UserProfile & { passwordHash: string }> {
   try {

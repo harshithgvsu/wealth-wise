@@ -2,14 +2,14 @@ import { describe, it, expect, beforeEach } from "vitest";
 
 // Test the credit card storage and helpers independently
 describe("CreditCardHub - Storage", () => {
-  const STORAGE_KEY = "wealthwise_cards";
+  const STORAGE_KEY = (userId: string) => `spendwise_cards_${userId}`;
 
   beforeEach(() => {
     localStorage.clear();
   });
 
   it("starts with empty cards", () => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(STORAGE_KEY("user1"));
     expect(stored).toBeNull();
   });
 
@@ -29,8 +29,8 @@ describe("CreditCardHub - Storage", () => {
         color: "#2563EB",
       },
     ];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
-    const loaded = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    localStorage.setItem(STORAGE_KEY("user1"), JSON.stringify(cards));
+    const loaded = JSON.parse(localStorage.getItem(STORAGE_KEY("user1"))!);
     expect(loaded).toHaveLength(1);
     expect(loaded[0].name).toBe("Test Card");
     expect(loaded[0].rewards["Food & Dining"]).toBe(4);
@@ -54,8 +54,8 @@ describe("CreditCardHub - Storage", () => {
       signupBonus: "25,000 pts",
       signupSpend: 3000,
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([card]));
-    const loaded = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    localStorage.setItem(STORAGE_KEY("user1"), JSON.stringify([card]));
+    const loaded = JSON.parse(localStorage.getItem(STORAGE_KEY("user1"))!);
     expect(loaded[0].signupBonus).toBe("25,000 pts");
     expect(loaded[0].creditLimit).toBe(5000);
     expect(loaded[0].centsPerPoint).toBe(1.5);

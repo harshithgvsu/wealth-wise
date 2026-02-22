@@ -19,6 +19,18 @@ export function AuthPage({ onLogin, onSignup, onResetPassword }: AuthPageProps) 
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const switchMode = (newMode: "login" | "signup" | "reset") => {
+    setMode(newMode);
+    setName("");
+    setEmail("");
+    setPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setShowPass(false);
+    setError("");
+    setSuccess("");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -60,8 +72,8 @@ export function AuthPage({ onLogin, onSignup, onResetPassword }: AuthPageProps) 
           <TrendingUp size={28} className="text-primary-foreground" />
         </div>
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-foreground tracking-tight">
-            Wealth<span className="text-gradient-primary">Wise</span>
+           <h1 className="text-3xl font-bold text-foreground tracking-tight">
+            Spend<span className="text-gradient-primary">Wise</span>
           </h1>
           <p className="text-muted-foreground text-sm mt-1">Your AI-powered financial companion</p>
         </div>
@@ -72,7 +84,7 @@ export function AuthPage({ onLogin, onSignup, onResetPassword }: AuthPageProps) 
         {mode === "reset" ? (
           <>
             <button
-              onClick={() => { setMode("login"); setError(""); setSuccess(""); }}
+              onClick={() => switchMode("login")}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"
             >
               <ArrowLeft size={14} /> Back to Sign In
@@ -89,10 +101,10 @@ export function AuthPage({ onLogin, onSignup, onResetPassword }: AuthPageProps) 
           </>
         ) : (
           <div className="flex rounded-xl overflow-hidden mb-6 bg-muted p-1 gap-1">
-            {(["login", "signup"] as const).map((m) => (
+          {(["login", "signup"] as const).map((m) => (
               <button
                 key={m}
-                onClick={() => { setMode(m); setError(""); }}
+                onClick={() => switchMode(m)}
                 className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
                   mode === m
                     ? "bg-primary text-primary-foreground shadow-sm"
@@ -233,13 +245,13 @@ export function AuthPage({ onLogin, onSignup, onResetPassword }: AuthPageProps) 
           <div className="text-center mt-4 space-y-2">
             <p className="text-xs text-muted-foreground">
               New here?{" "}
-              <button onClick={() => setMode("signup")} className="text-primary hover:underline font-medium">
+              <button onClick={() => switchMode("signup")} className="text-primary hover:underline font-medium">
                 Create a free account
               </button>
             </p>
             <p className="text-xs text-muted-foreground">
               Forgot password?{" "}
-              <button onClick={() => { setMode("reset"); setError(""); }} className="text-primary hover:underline font-medium">
+              <button onClick={() => switchMode("reset")} className="text-primary hover:underline font-medium">
                 Reset it
               </button>
             </p>

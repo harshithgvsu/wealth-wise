@@ -139,7 +139,7 @@ export default function Index() {
               <TrendingUp size={14} className="text-primary-foreground" />
             </div>
             <span className="font-bold text-foreground text-lg tracking-tight">
-              Wealth<span className="text-gradient-primary">Wise</span>
+              Spend<span className="text-gradient-primary">Wise</span>
             </span>
           </div>
 
@@ -328,14 +328,21 @@ export default function Index() {
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`flex flex-col items-center gap-1 px-5 py-1.5 rounded-xl transition-colors ${
+              className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-colors ${
                 activeTab === id ? "text-primary" : "text-muted-foreground"
               }`}
             >
-              <Icon size={20} />
+              <Icon size={18} />
               <span className="text-[10px] font-medium">{label}</span>
             </button>
           ))}
+          <button
+            onClick={handleLogoutRequest}
+            className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-colors text-muted-foreground"
+          >
+            <LogOut size={18} />
+            <span className="text-[10px] font-medium">Sign Out</span>
+          </button>
         </div>
       </nav>
 
