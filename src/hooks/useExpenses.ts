@@ -41,7 +41,7 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   Other: "hsl(215 20% 55%)",
 };
 
-const STORAGE_KEY = (userId?: string) => `wealthwise_expenses_${userId || "default"}`;
+const STORAGE_KEY = (userId?: string) => `spendwise_expenses_${userId || "default"}`;
 
 function readExpenses(key: string): Expense[] {
   try {

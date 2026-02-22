@@ -173,17 +173,17 @@ interface UserCard {
   id: string;
 }
 
-const STORAGE_KEY = "wealthwise_cards";
+const CARDS_STORAGE_KEY = (userId?: string) => `spendwise_cards_${userId || "default"}`;
 
-function loadCards(): UserCard[] {
+function loadCards(userId?: string): UserCard[] {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return JSON.parse(localStorage.getItem(CARDS_STORAGE_KEY(userId)) || "[]");
   } catch {
     return [];
   }
 }
-function saveCards(cards: UserCard[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+function saveCards(cards: UserCard[], userId?: string) {
+  localStorage.setItem(CARDS_STORAGE_KEY(userId), JSON.stringify(cards));
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -540,7 +540,7 @@ interface Props {
 }
 
 export function CreditCardHub({ expenses, userProfile }: Props) {
-  const [cards, setCards] = useState<UserCard[]>(loadCards);
+  const [cards, setCards] = useState<UserCard[]>(() => loadCards(userProfile?.id));
   const [showAdd, setShowAdd] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<"cards" | "optimizer" | "next">("cards");
@@ -548,14 +548,14 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
   const persistAdd = (card: UserCard) => {
     const next = [...cards, card];
     setCards(next);
-    saveCards(next);
+    saveCards(next, userProfile?.id);
     setShowAdd(false);
   };
 
   const removeCard = (id: string) => {
     const next = cards.filter((c) => c.id !== id);
     setCards(next);
-    saveCards(next);
+    saveCards(next, userProfile?.id);
   };
 
   // ── Category → best card mapping ──

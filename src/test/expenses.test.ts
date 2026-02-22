@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 
-const STORAGE_KEY = (userId: string) => `wealthwise_expenses_${userId}`;
+const STORAGE_KEY = (userId: string) => `spendwise_expenses_${userId}`;
 
 interface Expense {
   id: string;
