@@ -1,23 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export interface UserProfile {
   id: string;
   email: string;
   name: string;
-  // Income
   grossMonthlyIncome: number;
   netMonthlyIncome: number;
-  // Pre-tax benefits
   health401kMonthly: number;
   otherPreTaxBenefits: number;
-  // Fixed monthly expenses
   rentMortgage: number;
   carPayment: number;
   insurancePremiums: number;
   subscriptions: number;
   otherFixedExpenses: number;
-  // Goals & risk
-  savingsGoalPercent: number; // % of net income
+  savingsGoalPercent: number;
   investmentGoal: "retirement" | "property" | "emergency" | "growth" | "other";
   riskTolerance: "conservative" | "moderate" | "aggressive";
   investmentHorizonYears: number;
@@ -44,7 +40,6 @@ function saveUsers(users: Record<string, UserProfile & { passwordHash: string }>
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
-// Simple hash for demo (not cryptographic – fine for localStorage demo)
 function simpleHash(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -71,7 +66,27 @@ export function useAuth() {
     return { user: null, isLoggedIn: false };
   });
 
-  const signup = (email: string, password: string, name: string): { success: boolean; error?: string } => {
+  // Listen for storage events (cross-tab sync)
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === SESSION_KEY) {
+        if (!e.newValue) {
+          setAuthState({ user: null, isLoggedIn: false });
+        } else {
+          const users = getUsers();
+          const user = users[e.newValue];
+          if (user) {
+            const { passwordHash: _, ...profile } = user;
+            setAuthState({ user: profile, isLoggedIn: true });
+          }
+        }
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  const signup = useCallback((email: string, password: string, name: string): { success: boolean; error?: string } => {
     const users = getUsers();
     const existing = Object.values(users).find((u) => u.email === email);
     if (existing) return { success: false, error: "Email already registered. Please log in." };
@@ -103,9 +118,9 @@ export function useAuth() {
     const { passwordHash: _, ...profile } = newUser;
     setAuthState({ user: profile, isLoggedIn: true });
     return { success: true };
-  };
+  }, []);
 
-  const login = (email: string, password: string): { success: boolean; error?: string } => {
+  const login = useCallback((email: string, password: string): { success: boolean; error?: string } => {
     const users = getUsers();
     const userEntry = Object.values(users).find(
       (u) => u.email === email && u.passwordHash === simpleHash(password)
@@ -115,24 +130,36 @@ export function useAuth() {
     const { passwordHash: _, ...profile } = userEntry;
     setAuthState({ user: profile, isLoggedIn: true });
     return { success: true };
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
     setAuthState({ user: null, isLoggedIn: false });
-  };
+  }, []);
 
-  const updateProfile = (updates: Partial<Omit<UserProfile, "id" | "email" | "createdAt">>) => {
-    if (!authState.user) return;
+  const updateProfile = useCallback((updates: Partial<Omit<UserProfile, "id" | "email" | "createdAt">>) => {
+    setAuthState((prev) => {
+      if (!prev.user) return prev;
+      const users = getUsers();
+      const current = users[prev.user.id];
+      if (!current) return prev;
+      const updated = { ...current, ...updates };
+      users[prev.user.id] = updated;
+      saveUsers(users);
+      const { passwordHash: _, ...profile } = updated;
+      return { user: profile, isLoggedIn: true };
+    });
+  }, []);
+
+  const resetPassword = useCallback((email: string, newPassword: string): { success: boolean; error?: string } => {
     const users = getUsers();
-    const current = users[authState.user.id];
-    if (!current) return;
-    const updated = { ...current, ...updates };
-    users[authState.user.id] = updated;
+    const userEntry = Object.entries(users).find(([, u]) => u.email === email);
+    if (!userEntry) return { success: false, error: "No account found with that email." };
+    const [id, user] = userEntry;
+    users[id] = { ...user, passwordHash: simpleHash(newPassword) };
     saveUsers(users);
-    const { passwordHash: _, ...profile } = updated;
-    setAuthState({ user: profile, isLoggedIn: true });
-  };
+    return { success: true };
+  }, []);
 
-  return { ...authState, signup, login, logout, updateProfile };
+  return { ...authState, signup, login, logout, updateProfile, resetPassword };
 }
