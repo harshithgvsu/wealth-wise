@@ -2,9 +2,9 @@ import { useState } from "react";
 import { Eye, EyeOff, TrendingUp, Mail, Lock, User, ArrowRight, KeyRound, ArrowLeft } from "lucide-react";
 
 interface AuthPageProps {
-  onLogin: (email: string, password: string) => { success: boolean; error?: string };
-  onSignup: (email: string, password: string, name: string) => { success: boolean; error?: string };
-  onResetPassword: (email: string, newPassword: string) => { success: boolean; error?: string };
+  onLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }> | { success: boolean; error?: string };
+  onSignup: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }> | { success: boolean; error?: string };
+  onResetPassword: (email: string, newPassword: string) => Promise<{ success: boolean; error?: string }> | { success: boolean; error?: string };
 }
 
 export function AuthPage({ onLogin, onSignup, onResetPassword }: AuthPageProps) {
@@ -41,7 +41,7 @@ export function AuthPage({ onLogin, onSignup, onResetPassword }: AuthPageProps) 
     if (mode === "reset") {
       if (newPassword.length < 6) { setError("Password must be at least 6 characters."); setLoading(false); return; }
       if (newPassword !== confirmPassword) { setError("Passwords do not match."); setLoading(false); return; }
-      const result = onResetPassword(email, newPassword);
+      const result = await Promise.resolve(onResetPassword(email, newPassword));
       if (!result.success) { setError(result.error || "Something went wrong."); }
       else {
         setSuccess("Password reset! You can now sign in with your new password.");
@@ -53,11 +53,11 @@ export function AuthPage({ onLogin, onSignup, onResetPassword }: AuthPageProps) 
 
     let result: { success: boolean; error?: string };
     if (mode === "login") {
-      result = onLogin(email, password);
+      result = await Promise.resolve(onLogin(email, password));
     } else {
       if (!name.trim()) { setError("Please enter your name."); setLoading(false); return; }
       if (password.length < 6) { setError("Password must be at least 6 characters."); setLoading(false); return; }
-      result = onSignup(email, password, name);
+      result = await Promise.resolve(onSignup(email, password, name));
     }
 
     if (!result.success) setError(result.error || "Something went wrong.");

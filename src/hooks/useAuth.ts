@@ -25,8 +25,17 @@ export interface AuthState {
   isLoggedIn: boolean;
 }
 
+interface AuthResponse {
+  success: boolean;
+  error?: string;
+  user?: UserProfile;
+  token?: string;
+}
+
 const USERS_KEY = "spendwise_users";
 const SESSION_KEY = "spendwise_session";
+const SESSION_TOKEN_KEY = "spendwise_session_token";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "");
 
 function getUsers(): Record<string, UserProfile & { passwordHash: string }> {
   try {
@@ -50,6 +59,28 @@ function simpleHash(str: string): string {
   return Math.abs(hash).toString(36);
 }
 
+async function callAuthEndpoint(path: string, init: RequestInit): Promise<AuthResponse | null> {
+  if (!API_BASE_URL) return null;
+  try {
+    const res = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...(init.headers || {}),
+      },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      return { success: false, error: text || "Request failed" };
+    }
+
+    return (await res.json()) as AuthResponse;
+  } catch {
+    return null;
+  }
+}
+
 export function useAuth() {
   const [authState, setAuthState] = useState<AuthState>(() => {
     try {
@@ -65,6 +96,37 @@ export function useAuth() {
     } catch {}
     return { user: null, isLoggedIn: false };
   });
+
+  useEffect(() => {
+    if (!API_BASE_URL) return;
+
+    const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+    if (!sessionToken) return;
+
+    fetch(`${API_BASE_URL}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+      },
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("invalid session");
+        return (await res.json()) as AuthResponse;
+      })
+      .then((data) => {
+        if (!data.success || !data.user) throw new Error(data.error || "invalid session");
+        const users = getUsers();
+        users[data.user.id] = {
+          ...data.user,
+          passwordHash: users[data.user.id]?.passwordHash || "",
+        };
+        saveUsers(users);
+        localStorage.setItem(SESSION_KEY, data.user.id);
+        setAuthState({ user: data.user, isLoggedIn: true });
+      })
+      .catch(() => {
+        localStorage.removeItem(SESSION_TOKEN_KEY);
+      });
+  }, []);
 
   // Listen for storage events (cross-tab sync)
   useEffect(() => {
@@ -86,7 +148,23 @@ export function useAuth() {
     return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
-  const signup = useCallback((email: string, password: string, name: string): { success: boolean; error?: string } => {
+  const signup = useCallback(async (email: string, password: string, name: string): Promise<{ success: boolean; error?: string }> => {
+    const remote = await callAuthEndpoint("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify({ email, password, name }),
+    });
+
+    if (remote) {
+      if (!remote.success || !remote.user) return { success: false, error: remote.error || "Signup failed" };
+      const users = getUsers();
+      users[remote.user.id] = { ...remote.user, passwordHash: simpleHash(password) };
+      saveUsers(users);
+      localStorage.setItem(SESSION_KEY, remote.user.id);
+      if (remote.token) localStorage.setItem(SESSION_TOKEN_KEY, remote.token);
+      setAuthState({ user: remote.user, isLoggedIn: true });
+      return { success: true };
+    }
+
     const users = getUsers();
     const existing = Object.values(users).find((u) => u.email === email);
     if (existing) return { success: false, error: "Email already registered. Please log in." };
@@ -120,7 +198,23 @@ export function useAuth() {
     return { success: true };
   }, []);
 
-  const login = useCallback((email: string, password: string): { success: boolean; error?: string } => {
+  const login = useCallback(async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    const remote = await callAuthEndpoint("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (remote) {
+      if (!remote.success || !remote.user) return { success: false, error: remote.error || "Invalid email or password." };
+      const users = getUsers();
+      users[remote.user.id] = { ...remote.user, passwordHash: simpleHash(password) };
+      saveUsers(users);
+      localStorage.setItem(SESSION_KEY, remote.user.id);
+      if (remote.token) localStorage.setItem(SESSION_TOKEN_KEY, remote.token);
+      setAuthState({ user: remote.user, isLoggedIn: true });
+      return { success: true };
+    }
+
     const users = getUsers();
     const userEntry = Object.values(users).find(
       (u) => u.email === email && u.passwordHash === simpleHash(password)
@@ -134,10 +228,11 @@ export function useAuth() {
 
   const logout = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_TOKEN_KEY);
     setAuthState({ user: null, isLoggedIn: false });
   }, []);
 
-  const updateProfile = useCallback((updates: Partial<Omit<UserProfile, "id" | "email" | "createdAt">>) => {
+  const updateProfile = useCallback(async (updates: Partial<Omit<UserProfile, "id" | "email" | "createdAt">>) => {
     setAuthState((prev) => {
       if (!prev.user) return prev;
       const users = getUsers();
@@ -149,9 +244,30 @@ export function useAuth() {
       const { passwordHash: _, ...profile } = updated;
       return { user: profile, isLoggedIn: true };
     });
-  }, []);
 
-  const resetPassword = useCallback((email: string, newPassword: string): { success: boolean; error?: string } => {
+    const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+    if (API_BASE_URL && authState.user) {
+      await fetch(`${API_BASE_URL}/users/${authState.user.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
+        body: JSON.stringify(updates),
+      }).catch(() => undefined);
+    }
+  }, [authState.user]);
+
+  const resetPassword = useCallback(async (email: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
+    const remote = await callAuthEndpoint("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ email, newPassword }),
+    });
+
+    if (remote) {
+      if (!remote.success) return { success: false, error: remote.error || "No account found with that email." };
+    }
+
     const users = getUsers();
     const userEntry = Object.entries(users).find(([, u]) => u.email === email);
     if (!userEntry) return { success: false, error: "No account found with that email." };
