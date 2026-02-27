@@ -41,6 +41,8 @@ export const CATEGORY_COLORS: Record<Category, string> = {
   Other: "hsl(215 20% 55%)",
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "");
+const SESSION_TOKEN_KEY = "spendwise_session_token";
 const STORAGE_KEY = (userId?: string) => `spendwise_expenses_${userId || "default"}`;
 
 function readExpenses(key: string): Expense[] {
@@ -67,7 +69,29 @@ export function useExpenses(userId?: string) {
     }
   }, [storageKey]);
 
-  // Persist whenever expenses change (skip if key just changed — handled above)
+  useEffect(() => {
+    if (!API_BASE_URL || !userId) return;
+
+    const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+    const params = new URLSearchParams({ userId });
+    fetch(`${API_BASE_URL}/expenses?${params.toString()}`, {
+      headers: {
+        ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+      },
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to fetch expenses");
+        return (await res.json()) as { expenses?: Expense[] };
+      })
+      .then((data) => {
+        if (Array.isArray(data.expenses)) {
+          setExpenses(data.expenses);
+        }
+      })
+      .catch(() => undefined);
+  }, [userId, storageKey]);
+
+  // Persist whenever expenses change
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(expenses));
   }, [expenses, storageKey]);
@@ -79,17 +103,52 @@ export function useExpenses(userId?: string) {
       createdAt: Date.now(),
     };
     setExpenses((prev) => [newExpense, ...prev]);
+
+    if (API_BASE_URL && userId) {
+      const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+      fetch(`${API_BASE_URL}/expenses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
+        body: JSON.stringify({ userId, expense: newExpense }),
+      }).catch(() => undefined);
+    }
+
     return newExpense;
-  }, []);
+  }, [userId]);
 
   const deleteExpense = useCallback((id: string) => {
     setExpenses((prev) => prev.filter((e) => e.id !== id));
-  }, []);
+
+    if (API_BASE_URL && userId) {
+      const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+      const params = new URLSearchParams({ userId });
+      fetch(`${API_BASE_URL}/expenses/${id}?${params.toString()}`, {
+        method: "DELETE",
+        headers: {
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
+      }).catch(() => undefined);
+    }
+  }, [userId]);
 
   const resetExpenses = useCallback(() => {
     setExpenses([]);
     localStorage.removeItem(storageKey);
-  }, [storageKey]);
+
+    if (API_BASE_URL && userId) {
+      const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+      const params = new URLSearchParams({ userId });
+      fetch(`${API_BASE_URL}/expenses?${params.toString()}`, {
+        method: "DELETE",
+        headers: {
+          ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
+        },
+      }).catch(() => undefined);
+    }
+  }, [storageKey, userId]);
 
   const getMonthExpenses = useCallback((year: number, month: number) => {
     return expenses.filter((e) => {
