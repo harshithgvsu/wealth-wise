@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { PlusCircle, Calendar, Tag, DollarSign, FileText } from "lucide-react";
+import { useMemo, useState } from "react";
+import { PlusCircle, Calendar, Tag, DollarSign, FileText, CreditCard, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CATEGORIES, Category } from "@/hooks/useExpenses";
+import {
+  CARD_OPTIONS,
+  CATEGORIES,
+  Category,
+  calculateRewards,
+} from "@/hooks/useExpenses";
 
 interface ExpenseFormProps {
   onAdd: (expense: {
@@ -18,6 +23,10 @@ interface ExpenseFormProps {
     category: Category;
     description: string;
     date: string;
+    cardId?: string;
+    cardLabel?: string;
+    rewardRate?: number;
+    rewardsEarned?: number;
   }) => void;
 }
 
@@ -27,12 +36,19 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
   const [category, setCategory] = useState<Category | "">("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(today);
+  const [cardId, setCardId] = useState<string>("no-rewards");
   const [shake, setShake] = useState(false);
   const [success, setSuccess] = useState(false);
 
+  const rewardPreview = useMemo(() => {
+    const parsed = parseFloat(amount);
+    if (!parsed || parsed <= 0 || !category) return null;
+    return calculateRewards(parsed, cardId, category as Category);
+  }, [amount, category, cardId]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !category || !description || !date) {
+    if (!amount || !category || !description || !date || !cardId) {
       setShake(true);
       setTimeout(() => setShake(false), 400);
       return;
@@ -40,10 +56,23 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
     const parsed = parseFloat(amount);
     if (isNaN(parsed) || parsed <= 0) return;
 
-    onAdd({ amount: parsed, category: category as Category, description, date });
+    const selectedCard = CARD_OPTIONS.find((card) => card.id === cardId);
+    const rewardMeta = calculateRewards(parsed, cardId, category as Category);
+
+    onAdd({
+      amount: parsed,
+      category: category as Category,
+      description,
+      date,
+      cardId,
+      cardLabel: selectedCard?.label,
+      rewardRate: rewardMeta.rate,
+      rewardsEarned: rewardMeta.rewardsEarned,
+    });
     setAmount("");
     setDescription("");
     setDate(today);
+    setCardId("no-rewards");
     setSuccess(true);
     setTimeout(() => setSuccess(false), 1800);
   };
@@ -106,6 +135,36 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Card */}
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <CreditCard size={11} /> Card Used
+          </Label>
+          <Select value={cardId} onValueChange={setCardId}>
+            <SelectTrigger className="bg-navy-surface border-navy-border text-foreground focus:border-emerald/50 focus:ring-emerald/20">
+              <SelectValue placeholder="Select card" />
+            </SelectTrigger>
+            <SelectContent className="bg-navy-card border-navy-border z-[60]" position="popper" sideOffset={4}>
+              {CARD_OPTIONS.map((card) => (
+                <SelectItem
+                  key={card.id}
+                  value={card.id}
+                  className="text-foreground focus:bg-navy-surface focus:text-foreground"
+                >
+                  {card.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {rewardPreview && (
+            <p className="text-[11px] text-primary/90 flex items-center gap-1.5">
+              <Gift size={11} />
+              Estimated rewards: {rewardPreview.rewardsEarned.toFixed(2)} {rewardPreview.rewardType}
+              {rewardPreview.rate > 0 ? ` (${rewardPreview.rate}x)` : ""}
+            </p>
+          )}
         </div>
 
         {/* Description */}

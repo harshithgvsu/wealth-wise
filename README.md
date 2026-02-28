@@ -1,58 +1,57 @@
-# Welcome to your Lovable project
+# WealthWise
 
-## Project info
+A personal finance web app built with React, TypeScript, and Vite.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Getting started
 
-## How can I edit this code?
+### Prerequisites
 
-There are several ways of editing your application.
+- Node.js 18+
+- npm
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+### Install and run
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+The app runs locally with hot reloading. By default, Vite serves it at `http://localhost:8080`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Backend integration (optional, for multi-device sync)
 
-**Use GitHub Codespaces**
+By default, WealthWise stores data in browser local storage.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+To sync data across devices, set:
 
-## What technologies are used for this project?
+```sh
+VITE_API_BASE_URL=https://your-api.example.com
+```
 
-This project is built with:
+When this variable is set, the app will attempt to sync auth/profile/expense data with your API while still maintaining local storage as a fallback cache.
+
+### Expected API endpoints
+
+- `POST /auth/signup` → `{ success, user, token? }`
+- `POST /auth/login` → `{ success, user, token? }`
+- `POST /auth/reset-password` → `{ success, error? }`
+- `GET /auth/me` (with `Authorization: Bearer <token>`) → `{ success, user }`
+- `PATCH /users/:id` (with optional bearer token) → `{ success }`
+- `GET /expenses?userId=<id>` → `{ expenses: Expense[] }`
+- `POST /expenses` body `{ userId, expense }`
+- `DELETE /expenses/:id?userId=<id>`
+- `DELETE /expenses?userId=<id>`
+
+## Available scripts
+
+- `npm run dev` – start the development server
+- `npm run build` – create a production build
+- `npm run preview` – preview the production build locally
+- `npm run lint` – run ESLint
+- `npm run test` – run tests once with Vitest
+- `npm run test:watch` – run Vitest in watch mode
+
+## Tech stack
 
 - Vite
 - TypeScript
@@ -60,14 +59,12 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
-## How can I deploy this project?
+## Deployment
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+You can deploy the production build to any static hosting provider.
 
-## Can I connect a custom domain to my Lovable project?
+```sh
+npm run build
+```
 
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Then publish the generated `dist/` directory (for example on Netlify, Vercel, Cloudflare Pages, GitHub Pages, or an S3-backed static host).
