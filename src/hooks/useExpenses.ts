@@ -10,6 +10,16 @@ export type Category =
   | "Education"
   | "Other";
 
+export type RewardType = "points" | "miles" | "cashback";
+
+export interface CardOption {
+  id: string;
+  label: string;
+  rewardType: RewardType;
+  baseRate: number;
+  categoryRates?: Partial<Record<Category, number>>;
+}
+
 export interface Expense {
   id: string;
   amount: number;
@@ -17,6 +27,11 @@ export interface Expense {
   description: string;
   date: string; // ISO date string YYYY-MM-DD
   createdAt: number;
+  cardId?: string;
+  cardLabel?: string;
+  rewardRate?: number;
+  rewardsEarned?: number;
+  rewardType?: RewardType;
 }
 
 export const CATEGORIES: Category[] = [
@@ -28,6 +43,52 @@ export const CATEGORIES: Category[] = [
   "Bills & Utilities",
   "Education",
   "Other",
+];
+
+export const CARD_OPTIONS: CardOption[] = [
+  {
+    id: "no-rewards",
+    label: "Cash / Debit (No rewards)",
+    rewardType: "cashback",
+    baseRate: 0,
+  },
+  {
+    id: "chase-sapphire-preferred",
+    label: "Chase Sapphire Preferred",
+    rewardType: "points",
+    baseRate: 1,
+    categoryRates: {
+      "Food & Dining": 3,
+      Transport: 2,
+      Entertainment: 2,
+    },
+  },
+  {
+    id: "amex-gold",
+    label: "Amex Gold",
+    rewardType: "points",
+    baseRate: 1,
+    categoryRates: {
+      "Food & Dining": 4,
+      Shopping: 2,
+    },
+  },
+  {
+    id: "citi-double-cash",
+    label: "Citi Double Cash",
+    rewardType: "cashback",
+    baseRate: 2,
+  },
+  {
+    id: "venture-x",
+    label: "Capital One Venture X",
+    rewardType: "miles",
+    baseRate: 2,
+    categoryRates: {
+      Transport: 5,
+      "Food & Dining": 2,
+    },
+  },
 ];
 
 export const CATEGORY_COLORS: Record<Category, string> = {
@@ -44,6 +105,27 @@ export const CATEGORY_COLORS: Record<Category, string> = {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "");
 const SESSION_TOKEN_KEY = "spendwise_session_token";
 const STORAGE_KEY = (userId?: string) => `spendwise_expenses_${userId || "default"}`;
+
+export function getCardRewardRate(cardId: string | undefined, category: Category): number {
+  const card = CARD_OPTIONS.find((c) => c.id === cardId);
+  if (!card) return 0;
+  return card.categoryRates?.[category] ?? card.baseRate;
+}
+
+export function calculateRewards(amount: number, cardId: string | undefined, category: Category): {
+  rate: number;
+  rewardType: RewardType;
+  rewardsEarned: number;
+} {
+  const card = CARD_OPTIONS.find((c) => c.id === cardId) || CARD_OPTIONS[0];
+  const rate = card.categoryRates?.[category] ?? card.baseRate;
+  const rewardsEarned = (amount * rate) / 1;
+  return {
+    rate,
+    rewardType: card.rewardType,
+    rewardsEarned: Number(rewardsEarned.toFixed(2)),
+  };
+}
 
 function readExpenses(key: string): Expense[] {
   try {
@@ -97,10 +179,19 @@ export function useExpenses(userId?: string) {
   }, [expenses, storageKey]);
 
   const addExpense = useCallback((expense: Omit<Expense, "id" | "createdAt">) => {
+    const cardId = expense.cardId || "no-rewards";
+    const selectedCard = CARD_OPTIONS.find((card) => card.id === cardId) || CARD_OPTIONS[0];
+    const rewardMeta = calculateRewards(expense.amount, cardId, expense.category);
+
     const newExpense: Expense = {
       ...expense,
       id: crypto.randomUUID(),
       createdAt: Date.now(),
+      cardId,
+      cardLabel: expense.cardLabel || selectedCard.label,
+      rewardRate: rewardMeta.rate,
+      rewardType: rewardMeta.rewardType,
+      rewardsEarned: rewardMeta.rewardsEarned,
     };
     setExpenses((prev) => [newExpense, ...prev]);
 
