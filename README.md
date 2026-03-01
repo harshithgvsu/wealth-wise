@@ -68,3 +68,23 @@ npm run build
 ```
 
 Then publish the generated `dist/` directory (for example on Netlify, Vercel, Cloudflare Pages, GitHub Pages, or an S3-backed static host).
+
+## Troubleshooting npm esbuild version mismatch
+
+If you see an error like:
+
+```text
+.../node_modules/esbuild/install.js
+Expected "<version>" but got "<version>"
+```
+
+try this clean reinstall flow:
+
+```sh
+rm -rf node_modules package-lock.json
+npm cache clean --force
+unset ESBUILD_BINARY_PATH
+npm install
+```
+
+This project pins `esbuild` via npm `overrides` to reduce version drift across transitive dependencies.

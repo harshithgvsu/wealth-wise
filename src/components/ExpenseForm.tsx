@@ -11,9 +11,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  CARD_OPTIONS,
+  CardOption,
   CATEGORIES,
   Category,
+  DEFAULT_CARD_OPTION,
   calculateRewards,
 } from "@/hooks/useExpenses";
 
@@ -127,6 +128,34 @@ export function ExpenseForm({ onAdd, cardOptions, userId }: ExpenseFormProps) {
               ))}
             </SelectContent>
           </Select>
+          {rewardPreview && (
+            <p className="text-[11px] text-primary/90 flex items-center gap-1.5">
+              <Gift size={11} />
+              Estimated rewards: {rewardPreview.rewardsEarned.toFixed(2)} {rewardPreview.rewardType}
+              {rewardPreview.rate > 0 ? ` (${rewardPreview.rate}x)` : ""}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <CreditCard size={11} /> Card Used
+          </Label>
+          <Select value={cardId} onValueChange={setCardId}>
+            <SelectTrigger className="bg-navy-surface/90 border-navy-border text-foreground focus:border-emerald/50 focus:ring-emerald/20">
+              <SelectValue placeholder="Select card" />
+            </SelectTrigger>
+            <SelectContent className="bg-navy-card border-navy-border z-[60]">
+              {cardOptions.map((card) => (
+                <SelectItem key={card.id} value={card.id} className="text-foreground focus:bg-navy-surface focus:text-foreground">
+                  {card.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {cardOptions.length <= 1 && (
+            <p className="text-[11px] text-muted-foreground">Add cards in Credit Card Hub to see them here.</p>
+          )}
           {rewardPreview && (
             <p className="text-[11px] text-primary/90 flex items-center gap-1.5">
               <Gift size={11} />
