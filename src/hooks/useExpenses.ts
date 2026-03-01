@@ -34,15 +34,6 @@ export interface Expense {
   rewardType?: RewardType;
 }
 
-interface HubCard {
-  id: string;
-  name: string;
-  issuer?: string;
-  rewardType?: RewardType;
-  baseReward?: number;
-  rewards?: Record<string, number>;
-}
-
 export const CATEGORIES: Category[] = [
   "Food & Dining",
   "Transport",
@@ -54,12 +45,51 @@ export const CATEGORIES: Category[] = [
   "Other",
 ];
 
-export const DEFAULT_CARD_OPTION: CardOption = {
-  id: "no-rewards",
-  label: "Cash / Debit (No rewards)",
-  rewardType: "cashback",
-  baseRate: 0,
-};
+export const CARD_OPTIONS: CardOption[] = [
+  {
+    id: "no-rewards",
+    label: "Cash / Debit (No rewards)",
+    rewardType: "cashback",
+    baseRate: 0,
+  },
+  {
+    id: "chase-sapphire-preferred",
+    label: "Chase Sapphire Preferred",
+    rewardType: "points",
+    baseRate: 1,
+    categoryRates: {
+      "Food & Dining": 3,
+      Transport: 2,
+      Entertainment: 2,
+    },
+  },
+  {
+    id: "amex-gold",
+    label: "Amex Gold",
+    rewardType: "points",
+    baseRate: 1,
+    categoryRates: {
+      "Food & Dining": 4,
+      Shopping: 2,
+    },
+  },
+  {
+    id: "citi-double-cash",
+    label: "Citi Double Cash",
+    rewardType: "cashback",
+    baseRate: 2,
+  },
+  {
+    id: "venture-x",
+    label: "Capital One Venture X",
+    rewardType: "miles",
+    baseRate: 2,
+    categoryRates: {
+      Transport: 5,
+      "Food & Dining": 2,
+    },
+  },
+];
 
 export const CATEGORY_COLORS: Record<Category, string> = {
   "Food & Dining": "hsl(152 76% 40%)",
@@ -161,6 +191,27 @@ export function calculateRewards(
   };
 }
 
+export function getCardRewardRate(cardId: string | undefined, category: Category): number {
+  const card = CARD_OPTIONS.find((c) => c.id === cardId);
+  if (!card) return 0;
+  return card.categoryRates?.[category] ?? card.baseRate;
+}
+
+export function calculateRewards(amount: number, cardId: string | undefined, category: Category): {
+  rate: number;
+  rewardType: RewardType;
+  rewardsEarned: number;
+} {
+  const card = CARD_OPTIONS.find((c) => c.id === cardId) || CARD_OPTIONS[0];
+  const rate = card.categoryRates?.[category] ?? card.baseRate;
+  const rewardsEarned = (amount * rate) / 1;
+  return {
+    rate,
+    rewardType: card.rewardType,
+    rewardsEarned: Number(rewardsEarned.toFixed(2)),
+  };
+}
+
 function readExpenses(key: string): Expense[] {
   try {
     const stored = localStorage.getItem(key);
@@ -199,20 +250,22 @@ export function useExpenses(userId?: string) {
         return (await res.json()) as { expenses?: Expense[] };
       })
       .then((data) => {
-        if (Array.isArray(data.expenses)) setExpenses(data.expenses);
+        if (Array.isArray(data.expenses)) {
+          setExpenses(data.expenses);
+        }
       })
       .catch(() => undefined);
   }, [userId, storageKey]);
 
+  // Persist whenever expenses change
   useEffect(() => {
     localStorage.setItem(storageKey, JSON.stringify(expenses));
   }, [expenses, storageKey]);
 
   const addExpense = useCallback((expense: Omit<Expense, "id" | "createdAt">) => {
-    const cardOptions = getExpenseCardOptions(userId);
-    const cardId = expense.cardId || DEFAULT_CARD_OPTION.id;
-    const selectedCard = cardOptions.find((card) => card.id === cardId) || DEFAULT_CARD_OPTION;
-    const rewardMeta = calculateRewards(expense.amount, cardId, expense.category, userId);
+    const cardId = expense.cardId || "no-rewards";
+    const selectedCard = CARD_OPTIONS.find((card) => card.id === cardId) || CARD_OPTIONS[0];
+    const rewardMeta = calculateRewards(expense.amount, cardId, expense.category);
 
     const newExpense: Expense = {
       ...expense,

@@ -11,10 +11,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  CardOption,
+  CARD_OPTIONS,
   CATEGORIES,
   Category,
-  DEFAULT_CARD_OPTION,
   calculateRewards,
 } from "@/hooks/useExpenses";
 
@@ -39,15 +38,15 @@ export function ExpenseForm({ onAdd, cardOptions, userId }: ExpenseFormProps) {
   const [category, setCategory] = useState<Category | "">("");
   const [description, setDescription] = useState("");
   const [date, setDate] = useState(today);
-  const [cardId, setCardId] = useState<string>(DEFAULT_CARD_OPTION.id);
+  const [cardId, setCardId] = useState<string>("no-rewards");
   const [shake, setShake] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const rewardPreview = useMemo(() => {
     const parsed = parseFloat(amount);
     if (!parsed || parsed <= 0 || !category) return null;
-    return calculateRewards(parsed, cardId, category as Category, userId);
-  }, [amount, category, cardId, userId]);
+    return calculateRewards(parsed, cardId, category as Category);
+  }, [amount, category, cardId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,8 +58,8 @@ export function ExpenseForm({ onAdd, cardOptions, userId }: ExpenseFormProps) {
     const parsed = parseFloat(amount);
     if (isNaN(parsed) || parsed <= 0) return;
 
-    const selectedCard = cardOptions.find((card) => card.id === cardId);
-    const rewardMeta = calculateRewards(parsed, cardId, category as Category, userId);
+    const selectedCard = CARD_OPTIONS.find((card) => card.id === cardId);
+    const rewardMeta = calculateRewards(parsed, cardId, category as Category);
 
     onAdd({
       amount: parsed,
@@ -75,7 +74,7 @@ export function ExpenseForm({ onAdd, cardOptions, userId }: ExpenseFormProps) {
     setAmount("");
     setDescription("");
     setDate(today);
-    setCardId(DEFAULT_CARD_OPTION.id);
+    setCardId("no-rewards");
     setSuccess(true);
     setTimeout(() => setSuccess(false), 1800);
   };
@@ -130,25 +129,27 @@ export function ExpenseForm({ onAdd, cardOptions, userId }: ExpenseFormProps) {
           </Select>
         </div>
 
+        {/* Card */}
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
             <CreditCard size={11} /> Card Used
           </Label>
           <Select value={cardId} onValueChange={setCardId}>
-            <SelectTrigger className="bg-navy-surface/90 border-navy-border text-foreground focus:border-emerald/50 focus:ring-emerald/20">
+            <SelectTrigger className="bg-navy-surface border-navy-border text-foreground focus:border-emerald/50 focus:ring-emerald/20">
               <SelectValue placeholder="Select card" />
             </SelectTrigger>
-            <SelectContent className="bg-navy-card border-navy-border z-[60]">
-              {cardOptions.map((card) => (
-                <SelectItem key={card.id} value={card.id} className="text-foreground focus:bg-navy-surface focus:text-foreground">
+            <SelectContent className="bg-navy-card border-navy-border z-[60]" position="popper" sideOffset={4}>
+              {CARD_OPTIONS.map((card) => (
+                <SelectItem
+                  key={card.id}
+                  value={card.id}
+                  className="text-foreground focus:bg-navy-surface focus:text-foreground"
+                >
                   {card.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          {cardOptions.length <= 1 && (
-            <p className="text-[11px] text-muted-foreground">Add cards in Credit Card Hub to see them here.</p>
-          )}
           {rewardPreview && (
             <p className="text-[11px] text-primary/90 flex items-center gap-1.5">
               <Gift size={11} />
@@ -158,6 +159,7 @@ export function ExpenseForm({ onAdd, cardOptions, userId }: ExpenseFormProps) {
           )}
         </div>
 
+        {/* Description */}
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
             <FileText size={11} /> Description
