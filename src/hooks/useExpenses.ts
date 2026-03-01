@@ -34,6 +34,15 @@ export interface Expense {
   rewardType?: RewardType;
 }
 
+interface HubCard {
+  id: string;
+  name: string;
+  issuer?: string;
+  rewardType?: RewardType;
+  baseReward?: number;
+  rewards?: Record<string, unknown>;
+}
+
 export const CATEGORIES: Category[] = [
   "Food & Dining",
   "Transport",
@@ -45,51 +54,12 @@ export const CATEGORIES: Category[] = [
   "Other",
 ];
 
-export const CARD_OPTIONS: CardOption[] = [
-  {
-    id: "no-rewards",
-    label: "Cash / Debit (No rewards)",
-    rewardType: "cashback",
-    baseRate: 0,
-  },
-  {
-    id: "chase-sapphire-preferred",
-    label: "Chase Sapphire Preferred",
-    rewardType: "points",
-    baseRate: 1,
-    categoryRates: {
-      "Food & Dining": 3,
-      Transport: 2,
-      Entertainment: 2,
-    },
-  },
-  {
-    id: "amex-gold",
-    label: "Amex Gold",
-    rewardType: "points",
-    baseRate: 1,
-    categoryRates: {
-      "Food & Dining": 4,
-      Shopping: 2,
-    },
-  },
-  {
-    id: "citi-double-cash",
-    label: "Citi Double Cash",
-    rewardType: "cashback",
-    baseRate: 2,
-  },
-  {
-    id: "venture-x",
-    label: "Capital One Venture X",
-    rewardType: "miles",
-    baseRate: 2,
-    categoryRates: {
-      Transport: 5,
-      "Food & Dining": 2,
-    },
-  },
-];
+export const DEFAULT_CARD_OPTION: CardOption = {
+  id: "no-rewards",
+  label: "Cash / Debit (No rewards)",
+  rewardType: "cashback",
+  baseRate: 0,
+};
 
 export const CATEGORY_COLORS: Record<Category, string> = {
   "Food & Dining": "hsl(152 76% 40%)",
@@ -108,57 +78,73 @@ const STORAGE_KEY = (userId?: string) => `spendwise_expenses_${userId || "defaul
 const CARDS_STORAGE_KEY = (userId?: string) => `spendwise_cards_${userId || "default"}`;
 
 const CATEGORY_NORMALIZATION: Record<string, Category> = {
-  "food": "Food & Dining",
-  "dining": "Food & Dining",
-  "restaurant": "Food & Dining",
-  "restaurants": "Food & Dining",
-  "groceries": "Food & Dining",
-  "grocery": "Food & Dining",
-  "transport": "Transport",
-  "travel": "Transport",
-  "transit": "Transport",
-  "gas": "Transport",
-  "shopping": "Shopping",
-  "retail": "Shopping",
-  "health": "Health",
-  "medical": "Health",
-  "entertainment": "Entertainment",
-  "bills": "Bills & Utilities",
-  "utilities": "Bills & Utilities",
-  "education": "Education",
+  food: "Food & Dining",
+  dining: "Food & Dining",
+  restaurant: "Food & Dining",
+  restaurants: "Food & Dining",
+  groceries: "Food & Dining",
+  grocery: "Food & Dining",
+  transport: "Transport",
+  travel: "Transport",
+  transit: "Transport",
+  gas: "Transport",
+  shopping: "Shopping",
+  retail: "Shopping",
+  health: "Health",
+  medical: "Health",
+  entertainment: "Entertainment",
+  bills: "Bills & Utilities",
+  utilities: "Bills & Utilities",
+  education: "Education",
 };
 
+function getStorage(): Storage | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage;
+}
+
 function normalizeCategoryKey(key: string): Category | null {
-  const cleaned = key.toLowerCase().replace(/[^a-z& ]/g, "").trim();
+  const trimmed = key.trim();
+  if (!trimmed) return null;
+
+  const directMatch = CATEGORIES.find((category) => category.toLowerCase() === trimmed.toLowerCase());
+  if (directMatch) return directMatch;
+
+  const cleaned = trimmed.toLowerCase().replace(/[^a-z& ]/g, "").trim();
   if (!cleaned) return null;
-  if ((CATEGORIES as string[]).includes(key)) return key as Category;
-  if ((CATEGORIES as string[]).includes(cleaned)) return cleaned as Category;
   return CATEGORY_NORMALIZATION[cleaned] || null;
 }
 
 export function getExpenseCardOptions(userId?: string): CardOption[] {
+  const storage = getStorage();
+  if (!storage) return [DEFAULT_CARD_OPTION];
+
   try {
-    const cards = JSON.parse(localStorage.getItem(CARDS_STORAGE_KEY(userId)) || "[]") as HubCard[];
+    const cards = JSON.parse(storage.getItem(CARDS_STORAGE_KEY(userId)) || "[]") as HubCard[];
     if (!Array.isArray(cards) || cards.length === 0) return [DEFAULT_CARD_OPTION];
 
-    const mapped: CardOption[] = cards.map((card) => {
-      const categoryRates: Partial<Record<Category, number>> = {};
-      const rawRewards = card.rewards || {};
-      for (const [key, value] of Object.entries(rawRewards)) {
-        const normalized = normalizeCategoryKey(key);
-        if (normalized) categoryRates[normalized] = value;
-      }
+    const mapped: CardOption[] = cards
+      .filter((card) => typeof card?.id === "string" && typeof card?.name === "string")
+      .map((card) => {
+        const categoryRates: Partial<Record<Category, number>> = {};
+        const rawRewards = card.rewards || {};
 
-      return {
-        id: card.id,
-        label: card.issuer ? `${card.name} (${card.issuer})` : card.name,
-        rewardType: card.rewardType || "points",
-        baseRate: card.baseReward ?? 1,
-        categoryRates,
-      };
-    });
+        for (const [key, rawValue] of Object.entries(rawRewards)) {
+          const normalized = normalizeCategoryKey(key);
+          const value = typeof rawValue === "number" ? rawValue : Number(rawValue);
+          if (normalized && Number.isFinite(value)) categoryRates[normalized] = value;
+        }
 
-    return [DEFAULT_CARD_OPTION, ...mapped];
+        return {
+          id: card.id,
+          label: card.issuer ? `${card.name} (${card.issuer})` : card.name,
+          rewardType: card.rewardType || "points",
+          baseRate: Number.isFinite(card.baseReward) ? Number(card.baseReward) : 1,
+          categoryRates,
+        };
+      });
+
+    return mapped.length ? [DEFAULT_CARD_OPTION, ...mapped] : [DEFAULT_CARD_OPTION];
   } catch {
     return [DEFAULT_CARD_OPTION];
   }
@@ -191,30 +177,12 @@ export function calculateRewards(
   };
 }
 
-export function getCardRewardRate(cardId: string | undefined, category: Category): number {
-  const card = CARD_OPTIONS.find((c) => c.id === cardId);
-  if (!card) return 0;
-  return card.categoryRates?.[category] ?? card.baseRate;
-}
-
-export function calculateRewards(amount: number, cardId: string | undefined, category: Category): {
-  rate: number;
-  rewardType: RewardType;
-  rewardsEarned: number;
-} {
-  const card = CARD_OPTIONS.find((c) => c.id === cardId) || CARD_OPTIONS[0];
-  const rate = card.categoryRates?.[category] ?? card.baseRate;
-  const rewardsEarned = (amount * rate) / 1;
-  return {
-    rate,
-    rewardType: card.rewardType,
-    rewardsEarned: Number(rewardsEarned.toFixed(2)),
-  };
-}
-
 function readExpenses(key: string): Expense[] {
+  const storage = getStorage();
+  if (!storage) return [];
+
   try {
-    const stored = localStorage.getItem(key);
+    const stored = storage.getItem(key);
     if (stored) {
       const parsed = JSON.parse(stored);
       if (Array.isArray(parsed)) return parsed;
@@ -238,7 +206,8 @@ export function useExpenses(userId?: string) {
   useEffect(() => {
     if (!API_BASE_URL || !userId) return;
 
-    const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+    const storage = getStorage();
+    const sessionToken = storage?.getItem(SESSION_TOKEN_KEY);
     const params = new URLSearchParams({ userId });
     fetch(`${API_BASE_URL}/expenses?${params.toString()}`, {
       headers: {
@@ -250,22 +219,21 @@ export function useExpenses(userId?: string) {
         return (await res.json()) as { expenses?: Expense[] };
       })
       .then((data) => {
-        if (Array.isArray(data.expenses)) {
-          setExpenses(data.expenses);
-        }
+        if (Array.isArray(data.expenses)) setExpenses(data.expenses);
       })
       .catch(() => undefined);
   }, [userId, storageKey]);
 
-  // Persist whenever expenses change
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(expenses));
+    const storage = getStorage();
+    storage?.setItem(storageKey, JSON.stringify(expenses));
   }, [expenses, storageKey]);
 
   const addExpense = useCallback((expense: Omit<Expense, "id" | "createdAt">) => {
-    const cardId = expense.cardId || "no-rewards";
-    const selectedCard = CARD_OPTIONS.find((card) => card.id === cardId) || CARD_OPTIONS[0];
-    const rewardMeta = calculateRewards(expense.amount, cardId, expense.category);
+    const cardOptions = getExpenseCardOptions(userId);
+    const cardId = expense.cardId || DEFAULT_CARD_OPTION.id;
+    const selectedCard = cardOptions.find((card) => card.id === cardId) || DEFAULT_CARD_OPTION;
+    const rewardMeta = calculateRewards(expense.amount, cardId, expense.category, userId);
 
     const newExpense: Expense = {
       ...expense,
@@ -280,7 +248,8 @@ export function useExpenses(userId?: string) {
     setExpenses((prev) => [newExpense, ...prev]);
 
     if (API_BASE_URL && userId) {
-      const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+      const storage = getStorage();
+      const sessionToken = storage?.getItem(SESSION_TOKEN_KEY);
       fetch(`${API_BASE_URL}/expenses`, {
         method: "POST",
         headers: {
@@ -298,7 +267,8 @@ export function useExpenses(userId?: string) {
     setExpenses((prev) => prev.filter((e) => e.id !== id));
 
     if (API_BASE_URL && userId) {
-      const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+      const storage = getStorage();
+      const sessionToken = storage?.getItem(SESSION_TOKEN_KEY);
       const params = new URLSearchParams({ userId });
       fetch(`${API_BASE_URL}/expenses/${id}?${params.toString()}`, {
         method: "DELETE",
@@ -311,10 +281,11 @@ export function useExpenses(userId?: string) {
 
   const resetExpenses = useCallback(() => {
     setExpenses([]);
-    localStorage.removeItem(storageKey);
+    const storage = getStorage();
+    storage?.removeItem(storageKey);
 
     if (API_BASE_URL && userId) {
-      const sessionToken = localStorage.getItem(SESSION_TOKEN_KEY);
+      const sessionToken = storage?.getItem(SESSION_TOKEN_KEY);
       const params = new URLSearchParams({ userId });
       fetch(`${API_BASE_URL}/expenses?${params.toString()}`, {
         method: "DELETE",
