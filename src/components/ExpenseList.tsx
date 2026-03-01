@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Trash2, ChevronDown, ChevronUp, Gift, CreditCard } from "lucide-react";
 import { Expense, CATEGORY_COLORS } from "@/hooks/useExpenses";
 import { Button } from "@/components/ui/button";
 
@@ -16,6 +16,11 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
     return b.createdAt - a.createdAt;
   });
 
+  const totalRewards = useMemo(
+    () => expenses.reduce((sum, exp) => sum + (exp.rewardsEarned || 0), 0),
+    [expenses]
+  );
+
   const visible = showAll ? sorted : sorted.slice(0, 8);
 
   const formatDate = (dateStr: string) => {
@@ -31,10 +36,16 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
 
   return (
     <div className="glass-card border border-navy-border rounded-xl p-5 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-semibold text-foreground">
-          Recent Expenses
-        </h2>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">
+            Recent Expenses
+          </h2>
+          <p className="text-[11px] text-primary/90 mt-0.5 flex items-center gap-1.5">
+            <Gift size={11} />
+            Rewards this view: {totalRewards.toFixed(2)} pts/cashback/miles
+          </p>
+        </div>
         <span className="text-xs text-muted-foreground bg-navy-surface px-2 py-0.5 rounded-full">
           {expenses.length} total
         </span>
@@ -70,9 +81,19 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
                         <p className="text-sm text-foreground truncate">
                           {exp.description}
                         </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {exp.category}
-                        </p>
+                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
+                          <span>{exp.category}</span>
+                          {exp.cardLabel && (
+                            <span className="inline-flex items-center gap-1">
+                              <CreditCard size={10} /> {exp.cardLabel}
+                            </span>
+                          )}
+                          {(exp.rewardsEarned || 0) > 0 && (
+                            <span className="inline-flex items-center gap-1 text-primary/90">
+                              <Gift size={10} /> {exp.rewardsEarned?.toFixed(2)} {exp.rewardType || "points"}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <span className="text-sm font-mono font-semibold text-foreground flex-shrink-0">
                         ${exp.amount.toFixed(2)}
