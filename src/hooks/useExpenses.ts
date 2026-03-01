@@ -105,6 +105,91 @@ export const CATEGORY_COLORS: Record<Category, string> = {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "");
 const SESSION_TOKEN_KEY = "spendwise_session_token";
 const STORAGE_KEY = (userId?: string) => `spendwise_expenses_${userId || "default"}`;
+const CARDS_STORAGE_KEY = (userId?: string) => `spendwise_cards_${userId || "default"}`;
+
+const CATEGORY_NORMALIZATION: Record<string, Category> = {
+  "food": "Food & Dining",
+  "dining": "Food & Dining",
+  "restaurant": "Food & Dining",
+  "restaurants": "Food & Dining",
+  "groceries": "Food & Dining",
+  "grocery": "Food & Dining",
+  "transport": "Transport",
+  "travel": "Transport",
+  "transit": "Transport",
+  "gas": "Transport",
+  "shopping": "Shopping",
+  "retail": "Shopping",
+  "health": "Health",
+  "medical": "Health",
+  "entertainment": "Entertainment",
+  "bills": "Bills & Utilities",
+  "utilities": "Bills & Utilities",
+  "education": "Education",
+};
+
+function normalizeCategoryKey(key: string): Category | null {
+  const cleaned = key.toLowerCase().replace(/[^a-z& ]/g, "").trim();
+  if (!cleaned) return null;
+  if ((CATEGORIES as string[]).includes(key)) return key as Category;
+  if ((CATEGORIES as string[]).includes(cleaned)) return cleaned as Category;
+  return CATEGORY_NORMALIZATION[cleaned] || null;
+}
+
+export function getExpenseCardOptions(userId?: string): CardOption[] {
+  try {
+    const cards = JSON.parse(localStorage.getItem(CARDS_STORAGE_KEY(userId)) || "[]") as HubCard[];
+    if (!Array.isArray(cards) || cards.length === 0) return [DEFAULT_CARD_OPTION];
+
+    const mapped: CardOption[] = cards.map((card) => {
+      const categoryRates: Partial<Record<Category, number>> = {};
+      const rawRewards = card.rewards || {};
+      for (const [key, value] of Object.entries(rawRewards)) {
+        const normalized = normalizeCategoryKey(key);
+        if (normalized) categoryRates[normalized] = value;
+      }
+
+      return {
+        id: card.id,
+        label: card.issuer ? `${card.name} (${card.issuer})` : card.name,
+        rewardType: card.rewardType || "points",
+        baseRate: card.baseReward ?? 1,
+        categoryRates,
+      };
+    });
+
+    return [DEFAULT_CARD_OPTION, ...mapped];
+  } catch {
+    return [DEFAULT_CARD_OPTION];
+  }
+}
+
+export function getCardRewardRate(cardId: string | undefined, category: Category, userId?: string): number {
+  const options = getExpenseCardOptions(userId);
+  const card = options.find((c) => c.id === cardId) || DEFAULT_CARD_OPTION;
+  return card.categoryRates?.[category] ?? card.baseRate;
+}
+
+export function calculateRewards(
+  amount: number,
+  cardId: string | undefined,
+  category: Category,
+  userId?: string
+): {
+  rate: number;
+  rewardType: RewardType;
+  rewardsEarned: number;
+} {
+  const options = getExpenseCardOptions(userId);
+  const card = options.find((c) => c.id === cardId) || DEFAULT_CARD_OPTION;
+  const rate = card.categoryRates?.[category] ?? card.baseRate;
+  const rewardsEarned = amount * rate;
+  return {
+    rate,
+    rewardType: card.rewardType,
+    rewardsEarned: Number(rewardsEarned.toFixed(2)),
+  };
+}
 
 export function getCardRewardRate(cardId: string | undefined, category: Category): number {
   const card = CARD_OPTIONS.find((c) => c.id === cardId);
@@ -143,7 +228,6 @@ export function useExpenses(userId?: string) {
   const prevKeyRef = useRef(storageKey);
   const [expenses, setExpenses] = useState<Expense[]>(() => readExpenses(storageKey));
 
-  // Re-read from localStorage when userId (and thus storageKey) changes
   useEffect(() => {
     if (prevKeyRef.current !== storageKey) {
       prevKeyRef.current = storageKey;

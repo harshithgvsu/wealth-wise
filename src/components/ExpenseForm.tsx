@@ -18,6 +18,8 @@ import {
 } from "@/hooks/useExpenses";
 
 interface ExpenseFormProps {
+  cardOptions: CardOption[];
+  userId?: string;
   onAdd: (expense: {
     amount: number;
     category: Category;
@@ -30,7 +32,7 @@ interface ExpenseFormProps {
   }) => void;
 }
 
-export function ExpenseForm({ onAdd }: ExpenseFormProps) {
+export function ExpenseForm({ onAdd, cardOptions, userId }: ExpenseFormProps) {
   const today = new Date().toISOString().split("T")[0];
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<Category | "">("");
@@ -78,7 +80,7 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
   };
 
   return (
-    <div className="glass-card border border-navy-border rounded-xl p-5">
+    <div className="glass-card border border-navy-border rounded-xl p-5 bg-navy-card/90 backdrop-blur-md shadow-xl">
       <div className="flex items-center gap-2.5 mb-5">
         <div className="p-2 rounded-lg bg-emerald/15">
           <PlusCircle size={18} className="text-emerald" />
@@ -90,14 +92,12 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
         onSubmit={handleSubmit}
         className={`space-y-4 transition-all ${shake ? "animate-[wiggle_0.3s_ease]" : ""}`}
       >
-        {/* Amount */}
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
             <DollarSign size={11} /> Amount
           </Label>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm">
-              $
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-mono text-sm">$
             </span>
             <Input
               type="number"
@@ -106,30 +106,22 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
               placeholder="0.00"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              className="pl-7 bg-navy-surface border-navy-border font-mono text-foreground placeholder:text-muted-foreground/50 focus:border-emerald/50 focus:ring-emerald/20"
+              className="pl-7 bg-navy-surface/90 border-navy-border font-mono text-foreground placeholder:text-muted-foreground/60 focus:border-emerald/50 focus:ring-emerald/20"
             />
           </div>
         </div>
 
-        {/* Category */}
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
             <Tag size={11} /> Category
           </Label>
-          <Select
-            value={category}
-            onValueChange={(v) => setCategory(v as Category)}
-          >
-            <SelectTrigger className="bg-navy-surface border-navy-border text-foreground focus:border-emerald/50 focus:ring-emerald/20">
+          <Select value={category} onValueChange={(v) => setCategory(v as Category)}>
+            <SelectTrigger className="bg-navy-surface/90 border-navy-border text-foreground focus:border-emerald/50 focus:ring-emerald/20">
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
-            <SelectContent className="bg-navy-card border-navy-border z-[60]" position="popper" sideOffset={4}>
+            <SelectContent className="bg-navy-card border-navy-border z-[60]">
               {CATEGORIES.map((cat) => (
-                <SelectItem
-                  key={cat}
-                  value={cat}
-                  className="text-foreground focus:bg-navy-surface focus:text-foreground"
-                >
+                <SelectItem key={cat} value={cat} className="text-foreground focus:bg-navy-surface focus:text-foreground">
                   {cat}
                 </SelectItem>
               ))}
@@ -177,11 +169,10 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             maxLength={80}
-            className="bg-navy-surface border-navy-border text-foreground placeholder:text-muted-foreground/50 focus:border-emerald/50 focus:ring-emerald/20"
+            className="bg-navy-surface/90 border-navy-border text-foreground placeholder:text-muted-foreground/60 focus:border-emerald/50 focus:ring-emerald/20"
           />
         </div>
 
-        {/* Date */}
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
             <Calendar size={11} /> Date
@@ -191,7 +182,7 @@ export function ExpenseForm({ onAdd }: ExpenseFormProps) {
             value={date}
             onChange={(e) => setDate(e.target.value)}
             max={today}
-            className="bg-navy-surface border-navy-border text-foreground focus:border-emerald/50 focus:ring-emerald/20 [color-scheme:dark]"
+            className="bg-navy-surface/90 border-navy-border text-foreground focus:border-emerald/50 focus:ring-emerald/20 [color-scheme:dark]"
           />
         </div>
 

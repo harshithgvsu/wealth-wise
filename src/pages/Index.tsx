@@ -14,7 +14,7 @@ import {
   Sparkles,
   AlertTriangle,
 } from "lucide-react";
-import { useExpenses } from "@/hooks/useExpenses";
+import { getExpenseCardOptions, useExpenses } from "@/hooks/useExpenses";
 import { useAuth } from "@/hooks/useAuth";
 import { StatCard } from "@/components/StatCard";
 import { ExpenseForm } from "@/components/ExpenseForm";
@@ -46,6 +46,7 @@ export default function Index() {
 
   const { expenses, addExpense, deleteExpense, resetExpenses, getMonthExpenses, getTotalByCategory } =
     useExpenses(user?.id);
+  const cardOptions = getExpenseCardOptions(user?.id);
 
   // ---- Auth gates ----
   if (!isLoggedIn) {
@@ -229,7 +230,7 @@ export default function Index() {
                   </div>
                 </div>
                 <div className="w-full max-w-sm">
-                  <ExpenseForm onAdd={addExpense} />
+                  <ExpenseForm onAdd={addExpense} userId={user?.id} cardOptions={cardOptions} />
                 </div>
               </div>
             ) : (
@@ -271,7 +272,7 @@ export default function Index() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                   <div className="lg:col-span-1 space-y-4">
-                    <ExpenseForm onAdd={addExpense} />
+                    <ExpenseForm onAdd={addExpense} userId={user?.id} cardOptions={cardOptions} />
                     <ExpenseList expenses={monthExpenses} onDelete={deleteExpense} />
                   </div>
                   <div className="lg:col-span-2 space-y-4">
