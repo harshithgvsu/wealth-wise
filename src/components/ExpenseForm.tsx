@@ -11,10 +11,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  CardOption,
+  CARD_OPTIONS,
   CATEGORIES,
   Category,
-  DEFAULT_CARD_OPTION,
   calculateRewards,
 } from "@/hooks/useExpenses";
 
@@ -128,6 +127,13 @@ export function ExpenseForm({ onAdd, cardOptions, userId }: ExpenseFormProps) {
               ))}
             </SelectContent>
           </Select>
+          {rewardPreview && (
+            <p className="text-[11px] text-primary/90 flex items-center gap-1.5">
+              <Gift size={11} />
+              Estimated rewards: {rewardPreview.rewardsEarned.toFixed(2)} {rewardPreview.rewardType}
+              {rewardPreview.rate > 0 ? ` (${rewardPreview.rate}x)` : ""}
+            </p>
+          )}
         </div>
 
         <div className="space-y-1.5">
