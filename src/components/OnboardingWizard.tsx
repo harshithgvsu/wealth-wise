@@ -14,7 +14,7 @@ type WizardProfile = Omit<UserProfile, "id" | "email" | "name" | "createdAt">;
 
 interface OnboardingWizardProps {
   userName: string;
-  onComplete: (profile: WizardProfile) => void;
+  onComplete: (profile: WizardProfile) => void | Promise<void>;
 }
 
 const STEPS = [

@@ -10,7 +10,7 @@ import {
   Loader2,
   Plus,
 } from "lucide-react";
-import { Expense, CATEGORIES, Category } from "@/hooks/useExpenses";
+import { Expense, CATEGORIES, Category, getExpenseCardOptions } from "@/hooks/useExpenses";
 import { UserProfile } from "@/hooks/useAuth";
 
 interface Message {
@@ -146,7 +146,10 @@ function generateAIResponse(
 }
 
 // ---- Parse voice command to add expense ----
-function parseExpenseFromVoice(text: string): Omit<Expense, "id" | "createdAt"> | null {
+function parseExpenseFromVoice(
+  text: string,
+  userId?: string
+): Omit<Expense, "id" | "createdAt"> | null {
   const lower = text.toLowerCase();
   const amountMatch = lower.match(/\$?([\d]+(?:\.\d{1,2})?)/);
   if (!amountMatch) return null;
@@ -162,14 +165,29 @@ function parseExpenseFromVoice(text: string): Omit<Expense, "id" | "createdAt"> 
   else if (lower.includes("bill") || lower.includes("electric") || lower.includes("internet") || lower.includes("utility") || lower.includes("phone")) category = "Bills & Utilities";
   else if (lower.includes("course") || lower.includes("book") || lower.includes("school") || lower.includes("education") || lower.includes("tuition")) category = "Education";
 
-  // Extract description (remove amount and category keywords)
-  const description = text.replace(/\$?[\d]+(?:\.\d{1,2})?/, "").replace(/\b(spent|spend|paid|pay|for|on|added?|logged?)\b/gi, "").trim() || `${category} expense`;
+  const availableCards = getExpenseCardOptions(userId);
+  const normalizedText = lower.replace(/[^a-z0-9 ]/g, " ");
+  const matchedCard = availableCards
+    .filter((card) => card.id !== "no-rewards")
+    .find((card) => {
+      const label = card.label.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+      const primary = label.split("(")[0].trim();
+      return normalizedText.includes(label) || (primary.length > 3 && normalizedText.includes(primary));
+    });
+
+  const description = text
+    .replace(/\$?[\d]+(?:\.\d{1,2})?/, "")
+    .replace(/\b(spent|spend|paid|pay|for|on|added?|logged?|using|use|with)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim() || `${category} expense`;
 
   return {
     amount,
     category,
     description: description.charAt(0).toUpperCase() + description.slice(1),
     date: new Date().toISOString().split("T")[0],
+    cardId: matchedCard?.id,
+    cardLabel: matchedCard?.label,
   };
 }
 
@@ -215,10 +233,10 @@ export function AIChat({ expenses, userProfile, onAddExpense }: AIChatProps) {
     let responseContent = "";
 
     if (isExpenseCommand && onAddExpense) {
-      const parsed = parseExpenseFromVoice(text);
+      const parsed = parseExpenseFromVoice(text, userProfile.id);
       if (parsed) {
         onAddExpense(parsed);
-        responseContent = `✅ Added **$${parsed.amount.toFixed(2)}** to **${parsed.category}** — "${parsed.description}" for today. You can see it in your expense list!`;
+        responseContent = `✅ Added **$${parsed.amount.toFixed(2)}** to **${parsed.category}**${parsed.cardLabel ? ` using **${parsed.cardLabel}**` : ""} — "${parsed.description}" for today. You can see it in your expense list!`;
       } else {
         responseContent = "I couldn't parse that expense. Try: \"Add $15 lunch food\" or \"Spent $50 on groceries\"";
       }
