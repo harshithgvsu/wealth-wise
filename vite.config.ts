@@ -13,6 +13,7 @@ if (!(globalThis as { crypto?: { getRandomValues?: unknown } }).crypto?.getRando
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
+  base: "./",
   server: {
     host: "::",
     port: 8080,
@@ -36,7 +37,7 @@ export default defineConfig(() => ({
         background_color: "#080f1a",
         display: "standalone",
         orientation: "portrait",
-        start_url: "/",
+        start_url: "./",
         icons: [
           {
             src: "/favicon.ico",
