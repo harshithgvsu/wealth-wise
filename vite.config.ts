@@ -13,7 +13,6 @@ if (!(globalThis as { crypto?: { getRandomValues?: unknown } }).crypto?.getRando
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
-  // Use relative asset paths so GitHub Pages project sites load correctly
   base: "./",
   server: {
     host: "::",
