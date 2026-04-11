@@ -386,7 +386,7 @@ function AddCardSheet({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="glass-card w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto"
+        className="glass w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-bold text-foreground mb-4">Add a Credit Card</h2>
@@ -597,7 +597,7 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 bg-primary text-primary-foreground text-xs font-semibold px-3 py-2 rounded-xl"
+          className="flex items-center gap-1.5 text-black text-xs font-semibold px-3 py-2 rounded-xl" style={{background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}
         >
           <Plus size={13} /> Add Card
         </button>
@@ -606,17 +606,17 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
       {/* Summary row */}
       {cards.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
-          <div className="glass-card rounded-xl p-3 text-center">
+          <div className="glass rounded-xl p-3 text-center">
             <p className="text-xs text-muted-foreground">Est. Rewards</p>
             <p className="text-base font-bold text-primary">${totalRewards.toFixed(2)}</p>
             <p className="text-[10px] text-muted-foreground">this period</p>
           </div>
-          <div className="glass-card rounded-xl p-3 text-center">
+          <div className="glass rounded-xl p-3 text-center">
             <p className="text-xs text-muted-foreground">Annual Fees</p>
-            <p className="text-base font-bold text-accent">${(totalFees * 12).toFixed(0)}/yr</p>
+            <p className="text-base font-bold text-amber-400">${(totalFees * 12).toFixed(0)}/yr</p>
             <p className="text-[10px] text-muted-foreground">${totalFees.toFixed(2)}/mo</p>
           </div>
-          <div className="glass-card rounded-xl p-3 text-center">
+          <div className="glass rounded-xl p-3 text-center">
             <p className="text-xs text-muted-foreground">Net Value</p>
             <p className={`text-base font-bold ${netRewards >= 0 ? "text-primary" : "text-destructive"}`}>
               ${netRewards.toFixed(2)}
@@ -649,7 +649,7 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
       {activeSection === "cards" && (
         <div className="space-y-3">
           {cards.length === 0 ? (
-            <div className="glass-card rounded-xl p-8 text-center">
+            <div className="glass rounded-xl p-8 text-center">
               <CreditCard size={32} className="text-muted-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">No cards added yet.</p>
               <button onClick={() => setShowAdd(true)} className="mt-3 text-primary text-sm font-medium underline underline-offset-2">
@@ -667,7 +667,7 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
               const isExpanded = expandedCard === card.id;
 
               return (
-                <div key={card.id} className="glass-card rounded-xl overflow-hidden">
+                <div key={card.id} className="glass rounded-xl overflow-hidden">
                   <div className="p-3">
                     <div className="flex gap-3 items-start">
                       <div className="w-28 shrink-0">
@@ -695,7 +695,7 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
                             {card.baseReward}{card.rewardType === "cashback" ? "%" : "x"} base
                           </span>
                           {Object.entries(card.rewards).slice(0, 2).map(([cat, rate]) => (
-                            <span key={cat} className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-full font-medium">
+                            <span key={cat} className="text-[10px] bg-amber-400/15 text-amber-400 px-2 py-0.5 rounded-full font-medium">
                               {rate}x {cat}
                             </span>
                           ))}
@@ -722,7 +722,7 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
                           <div className="mt-2">
                             <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
                               <span className="flex items-center gap-0.5"><Gift size={9} /> Signup bonus</span>
-                              <span className="text-accent">{bonusPct.toFixed(0)}%</span>
+                              <span className="text-amber-400">{bonusPct.toFixed(0)}%</span>
                             </div>
                             <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
                               <div className="h-full rounded-full bg-accent" style={{ width: `${bonusPct}%` }} />
@@ -742,7 +742,7 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
                         {Object.entries(card.rewards).map(([cat, rate]) => (
                           <div key={cat} className="bg-secondary rounded-lg px-2 py-1.5 flex justify-between items-center">
                             <span className="text-xs text-foreground">{cat}</span>
-                            <span className="text-xs font-bold text-accent">{rate}{card.rewardType === "cashback" ? "%" : "x"}</span>
+                            <span className="text-xs font-bold text-amber-400">{rate}{card.rewardType === "cashback" ? "%" : "x"}</span>
                           </div>
                         ))}
                         <div className="bg-secondary rounded-lg px-2 py-1.5 flex justify-between items-center">
@@ -751,8 +751,8 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
                         </div>
                       </div>
                       {card.signupBonus && (
-                        <div className="bg-accent/10 border border-accent/20 rounded-lg px-3 py-2 mt-1">
-                          <p className="text-xs font-semibold text-accent flex items-center gap-1"><Star size={10} /> Signup Bonus</p>
+                        <div className="bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2 mt-1">
+                          <p className="text-xs font-semibold text-amber-400 flex items-center gap-1"><Star size={10} /> Signup Bonus</p>
                           <p className="text-xs text-muted-foreground">{card.signupBonus}</p>
                           {card.signupSpend && <p className="text-[10px] text-muted-foreground">Spend ${card.signupSpend.toLocaleString()} to unlock</p>}
                         </div>
@@ -766,7 +766,7 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
 
           {/* Interest / utilization alerts */}
           {utilizationAlerts.length > 0 && (
-            <div className="glass-card rounded-xl p-4 border border-destructive/30 space-y-2">
+            <div className="glass rounded-xl p-4 border border-destructive/30 space-y-2">
               <p className="text-sm font-semibold text-destructive flex items-center gap-1.5">
                 <AlertTriangle size={14} /> High Utilization Alert
               </p>
@@ -786,12 +786,12 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
       {activeSection === "optimizer" && (
         <div className="space-y-3">
           {cards.length === 0 ? (
-            <div className="glass-card rounded-xl p-8 text-center">
+            <div className="glass rounded-xl p-8 text-center">
               <Zap size={32} className="text-muted-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">Add your cards first to see per-category recommendations.</p>
             </div>
           ) : allCategories.length === 0 ? (
-            <div className="glass-card rounded-xl p-8 text-center">
+            <div className="glass rounded-xl p-8 text-center">
               <p className="text-sm text-muted-foreground">No expenses logged yet. Add some expenses to see optimized card suggestions.</p>
             </div>
           ) : (
@@ -808,7 +808,7 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
                   const earned = getEffectiveCashback(best, cat, spend);
 
                   return (
-                    <div key={cat} className="glass-card rounded-xl p-4 flex items-center gap-3">
+                    <div key={cat} className="glass rounded-xl p-4 flex items-center gap-3">
                       <div className="w-20 shrink-0">
                         <CardVisual card={best} small />
                       </div>
@@ -831,7 +831,7 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
                 })}
 
               {/* Interest avoidance tips */}
-              <div className="glass-card rounded-xl p-4 space-y-2 border border-primary/20">
+              <div className="glass rounded-xl p-4 space-y-2 border border-primary/20">
                 <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
                   <ShieldCheck size={14} className="text-primary" /> Interest Avoidance Tips
                 </p>
@@ -861,9 +861,9 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
         <div className="space-y-3">
           {recommendation ? (
             <>
-              <div className="glass-card rounded-xl overflow-hidden">
+              <div className="glass rounded-xl overflow-hidden">
                 <div className="p-4">
-                  <p className="text-xs font-semibold text-accent flex items-center gap-1 mb-3">
+                  <p className="text-xs font-semibold text-amber-400 flex items-center gap-1 mb-3">
                     <Sparkles size={11} /> Recommended Next Card
                   </p>
                   <div className="flex gap-3 items-start">
@@ -875,7 +875,7 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
                       <p className="text-xs text-muted-foreground">{recommendation.card.network} · ${recommendation.card.annualFee}/yr</p>
                       <div className="flex flex-wrap gap-1 mt-2">
                         {Object.entries(recommendation.card.rewards).slice(0, 3).map(([cat, rate]) => (
-                          <span key={cat} className="text-[10px] bg-accent/15 text-accent px-2 py-0.5 rounded-full">
+                          <span key={cat} className="text-[10px] bg-amber-400/15 text-amber-400 px-2 py-0.5 rounded-full">
                             {rate}x {cat}
                           </span>
                         ))}
@@ -889,8 +889,8 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
                     <p className="text-xs text-muted-foreground mt-0.5">{recommendation.reason}</p>
                   </div>
                   {recommendation.card.signupBonus && (
-                    <div className="mt-2 bg-accent/10 border border-accent/20 rounded-lg px-3 py-2">
-                      <p className="text-xs text-accent font-medium flex items-center gap-1.5">
+                    <div className="mt-2 bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2">
+                      <p className="text-xs text-amber-400 font-medium flex items-center gap-1.5">
                         <Gift size={11} /> Signup Bonus
                       </p>
                       <p className="text-xs text-muted-foreground">{recommendation.card.signupBonus}</p>
@@ -908,17 +908,17 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
                 {PRESET_CARDS.filter((p) => !cards.some((c) => c.presetId === p.id) && p.id !== recommendation.card.id)
                   .slice(0, 4)
                   .map((p) => (
-                    <div key={p.id} className="glass-card rounded-xl p-3">
+                    <div key={p.id} className="glass rounded-xl p-3">
                       <CardVisual card={p} small />
                       <p className="text-xs font-semibold text-foreground mt-1.5 leading-tight">{p.issuer} {p.name}</p>
                       <p className="text-[10px] text-muted-foreground">${p.annualFee}/yr · {p.baseReward}{p.rewardType === "cashback" ? "%" : "x"} base</p>
-                      {p.signupBonus && <p className="text-[10px] text-accent mt-0.5">🎁 {p.signupBonus}</p>}
+                      {p.signupBonus && <p className="text-[10px] text-amber-400 mt-0.5">🎁 {p.signupBonus}</p>}
                     </div>
                   ))}
               </div>
             </>
           ) : (
-            <div className="glass-card rounded-xl p-8 text-center">
+            <div className="glass rounded-xl p-8 text-center">
               <Sparkles size={32} className="text-muted-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">
                 {cards.length === 0

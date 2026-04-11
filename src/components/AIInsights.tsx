@@ -1,13 +1,5 @@
 import { useState } from "react";
-import {
-  Sparkles,
-  TrendingDown,
-  TrendingUp,
-  Lightbulb,
-  Target,
-  RefreshCw,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Sparkles, TrendingDown, TrendingUp, Lightbulb, Target, RefreshCw } from "lucide-react";
 import { Expense, Category } from "@/hooks/useExpenses";
 
 interface AIInsightsProps {
@@ -16,169 +8,77 @@ interface AIInsightsProps {
   monthTotal: number;
 }
 
-interface Insight {
-  type: "save" | "warn" | "invest" | "trend";
-  title: string;
-  body: string;
-  icon: React.ReactNode;
-  color: string;
-}
-
-function generateInsights(
-  expenses: Expense[],
-  totalByCategory: Partial<Record<Category, number>>,
-  monthTotal: number
-): Insight[] {
-  const insights: Insight[] = [];
-
-  // Find biggest spending categories
+function generateInsights(expenses: Expense[], totalByCategory: Partial<Record<Category, number>>, monthTotal: number) {
   const sorted = Object.entries(totalByCategory).sort(([, a], [, b]) => b - a);
-  const topCat = sorted[0];
-  const secondCat = sorted[1];
+  const insights = [];
 
+  const topCat = sorted[0];
   if (topCat) {
     const pct = ((topCat[1] / monthTotal) * 100).toFixed(0);
-    insights.push({
-      type: "warn",
-      title: `${topCat[0]} is your top expense`,
-      body: `You've spent $${topCat[1].toFixed(0)} (${pct}% of your budget) on ${topCat[0]} this month. Consider reducing by 20% to save $${(topCat[1] * 0.2).toFixed(0)}.`,
-      icon: <TrendingDown size={16} />,
-      color: "text-destructive",
-    });
+    insights.push({ type: "warn", title: `${topCat[0]} is your top expense`, body: `$${topCat[1].toFixed(0)} (${pct}% of budget). Cutting 20% saves ~$${(topCat[1] * 0.2).toFixed(0)}/month.`, icon: <TrendingDown size={15} />, color: "text-destructive", accent: "border-destructive/20 bg-destructive/5" });
   }
 
-  // Food & Dining check
-  const foodTotal = totalByCategory["Food & Dining"] || 0;
-  if (foodTotal > 200) {
-    const dailyAvg = foodTotal / 28;
-    insights.push({
-      type: "save",
-      title: "Meal prep could save you money",
-      body: `You're averaging $${dailyAvg.toFixed(1)}/day on food. Cooking 3 days/week instead of eating out could save ~$${(foodTotal * 0.35).toFixed(0)}/month.`,
-      icon: <Lightbulb size={16} />,
-      color: "text-gold",
-    });
+  const food = totalByCategory["Food & Dining"] || 0;
+  if (food > 200) {
+    insights.push({ type: "save", title: "Meal prep could save you money", body: `You're averaging $${(food / 28).toFixed(1)}/day on food. Cooking 3× per week could save ~$${(food * 0.35).toFixed(0)}/month.`, icon: <Lightbulb size={15} />, color: "text-amber-400", accent: "border-amber-400/20 bg-amber-400/5" });
   }
 
-  // Entertainment check
-  const entertainTotal = totalByCategory["Entertainment"] || 0;
-  if (entertainTotal > 50) {
-    insights.push({
-      type: "save",
-      title: "Review subscriptions",
-      body: `$${entertainTotal.toFixed(0)} on entertainment. Audit your subscriptions — most people have 2–3 unused ones averaging $${(entertainTotal * 0.3).toFixed(0)}/month.`,
-      icon: <Target size={16} />,
-      color: "text-emerald",
-    });
+  const ent = totalByCategory["Entertainment"] || 0;
+  if (ent > 50) {
+    insights.push({ type: "save", title: "Review subscriptions", body: `$${ent.toFixed(0)} on entertainment. Most people have 2–3 unused subscriptions averaging $${(ent * 0.3).toFixed(0)}/month.`, icon: <Target size={15} />, color: "text-primary", accent: "border-primary/20 bg-primary/5" });
   }
 
-  // Savings potential
-  const savingsPotential = monthTotal * 0.15;
-  insights.push({
-    type: "invest",
-    title: "Investment opportunity",
-    body: `If you cut 15% of monthly expenses ($${savingsPotential.toFixed(0)}), investing it at 8% annual return over 10 years = $${(savingsPotential * 12 * 14.49).toFixed(0)} in wealth.`,
-    icon: <TrendingUp size={16} />,
-    color: "text-emerald",
-  });
+  const savings = monthTotal * 0.15;
+  insights.push({ type: "invest", title: "Investment opportunity", body: `Cutting 15% ($${savings.toFixed(0)}/mo) invested at 8% = ~$${(savings * 12 * 14.49).toFixed(0)} over 10 years.`, icon: <TrendingUp size={15} />, color: "text-primary", accent: "border-primary/20 bg-primary/5" });
 
-  // Trend prediction
-  const avgPerDay = monthTotal / 18; // ~18 days into Feb
-  const predictedMonthEnd = avgPerDay * 28;
-  insights.push({
-    type: "trend",
-    title: "Month-end forecast",
-    body: `At your current pace ($${avgPerDay.toFixed(1)}/day), you'll spend ~$${predictedMonthEnd.toFixed(0)} this month. That's ${predictedMonthEnd > monthTotal * 1.5 ? "above" : "in line with"} your trend from last month.`,
-    icon: <Sparkles size={16} />,
-    color: "text-gold",
-  });
+  const avgPerDay = monthTotal / 18;
+  insights.push({ type: "trend", title: "Month-end forecast", body: `At $${avgPerDay.toFixed(1)}/day you'll spend ~$${(avgPerDay * 28).toFixed(0)} this month.`, icon: <Sparkles size={15} />, color: "text-amber-400", accent: "border-amber-400/20 bg-amber-400/5" });
 
-  if (secondCat) {
-    insights.push({
-      type: "save",
-      title: `Trim ${secondCat[0]} costs`,
-      body: `$${secondCat[1].toFixed(0)} on ${secondCat[0]}. Look for discounts, alternatives or bundles — even 10% off saves $${(secondCat[1] * 0.1).toFixed(0)}/month.`,
-      icon: <Lightbulb size={16} />,
-      color: "text-gold",
-    });
+  const second = sorted[1];
+  if (second) {
+    insights.push({ type: "save", title: `Trim ${second[0]} costs`, body: `$${second[1].toFixed(0)} on ${second[0]}. Even 10% off saves $${(second[1] * 0.1).toFixed(0)}/month.`, icon: <Lightbulb size={15} />, color: "text-amber-400", accent: "border-amber-400/20 bg-amber-400/5" });
   }
 
   return insights;
 }
 
-export function AIInsights({
-  expenses,
-  totalByCategory,
-  monthTotal,
-}: AIInsightsProps) {
-  const [isRefreshing, setIsRefreshing] = useState(false);
+export function AIInsights({ expenses, totalByCategory, monthTotal }: AIInsightsProps) {
+  const [refreshing, setRefreshing] = useState(false);
   const [activeIdx, setActiveIdx] = useState<number | null>(null);
-
   const insights = generateInsights(expenses, totalByCategory, monthTotal);
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 1000);
-  };
-
   return (
-    <div className="glass-card border border-gold/20 rounded-xl p-5 glow-gold">
+    <div className="glass-violet rounded-xl p-5">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-lg bg-gold/15">
-            <Sparkles size={16} className="text-gold" />
+          <div className="p-2 rounded-lg bg-accent/15">
+            <Sparkles size={15} className="text-accent" />
           </div>
           <div>
-            <h2 className="text-base font-semibold text-foreground">
-              AI Insights
-            </h2>
-            <p className="text-[11px] text-muted-foreground">
-              Based on your spending patterns
-            </p>
+            <h2 className="text-base font-bold" style={{fontFamily:"'Syne',sans-serif"}}>AI Insights</h2>
+            <p className="text-[11px] text-muted-foreground">Based on your spending patterns</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleRefresh}
-          className="text-muted-foreground hover:text-gold p-1.5"
-        >
-          <RefreshCw
-            size={14}
-            className={isRefreshing ? "animate-spin text-gold" : ""}
-          />
-        </Button>
+        <button onClick={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 900); }}
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-accent transition-colors">
+          <RefreshCw size={13} className={refreshing ? "animate-spin text-accent" : ""} />
+        </button>
       </div>
 
       {monthTotal === 0 ? (
-        <div className="py-8 text-center text-muted-foreground text-sm">
-          Add expenses to get AI insights
-        </div>
+        <div className="py-8 text-center text-muted-foreground text-sm">Add expenses to get AI insights</div>
       ) : (
-        <div className="space-y-2.5">
+        <div className="space-y-2">
           {insights.map((insight, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveIdx(activeIdx === i ? null : i)}
-              className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 ${
-                activeIdx === i
-                  ? "border-gold/30 bg-gold/5"
-                  : "border-navy-border bg-navy-surface/50 hover:border-navy-border/80 hover:bg-navy-surface"
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <span className={`mt-0.5 flex-shrink-0 ${insight.color}`}>
-                  {insight.icon}
-                </span>
+            <button key={i} onClick={() => setActiveIdx(activeIdx === i ? null : i)}
+              className={`w-full text-left p-3 rounded-xl border transition-all duration-200 ${
+                activeIdx === i ? insight.accent : "border-border bg-secondary/30 hover:bg-secondary/60"
+              }`}>
+              <div className="flex items-start gap-2.5">
+                <span className={`mt-0.5 flex-shrink-0 ${insight.color}`}>{insight.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">
-                    {insight.title}
-                  </p>
-                  <p
-                    className={`text-xs text-muted-foreground mt-1 leading-relaxed transition-all duration-200 ${
-                      activeIdx === i ? "block" : "line-clamp-1"
-                    }`}
-                  >
+                  <p className="text-sm font-medium">{insight.title}</p>
+                  <p className={`text-xs text-muted-foreground mt-0.5 leading-relaxed transition-all ${activeIdx === i ? "block" : "line-clamp-1"}`}>
                     {insight.body}
                   </p>
                 </div>
@@ -188,11 +88,9 @@ export function AIInsights({
         </div>
       )}
 
-      <div className="mt-4 pt-4 border-t border-navy-border">
-        <p className="text-[10px] text-muted-foreground/60 text-center">
-          AI insights update based on your spending data · Click any insight to expand
-        </p>
-      </div>
+      <p className="text-[10px] text-muted-foreground/50 text-center mt-4 pt-3 border-t border-border">
+        Click any insight to expand · updates based on your data
+      </p>
     </div>
   );
 }

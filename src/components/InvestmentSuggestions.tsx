@@ -31,7 +31,7 @@ interface Suggestion {
 function RiskBadge({ risk }: { risk: "Low" | "Medium" | "High" }) {
   const colors = {
     Low: "text-primary bg-primary/10 border-primary/20",
-    Medium: "text-accent bg-accent/10 border-accent/20",
+    Medium: "text-amber-400 bg-amber-400/10 border-amber-400/20",
     High: "text-destructive bg-destructive/10 border-destructive/20",
   };
   return (
@@ -131,7 +131,7 @@ export function InvestmentSuggestions({ expenses, userProfile }: InvestmentSugge
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="glass-card rounded-2xl p-4">
+      <div className="glass rounded-2xl p-4">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center">
             <TrendingUp size={18} className="text-primary" />
@@ -154,10 +154,10 @@ export function InvestmentSuggestions({ expenses, userProfile }: InvestmentSugge
             <p className="text-foreground font-bold text-sm">${analysis.avgMonthlySpend.toFixed(0)}<span className="text-muted-foreground text-xs font-normal">/mo avg</span></p>
             <p className="text-xs text-muted-foreground mt-0.5">{spendingHealthy ? "Under 80% disposable ✓" : "Exceeds budget target"}</p>
           </div>
-          <div className={`rounded-xl p-3 border ${savingsOnTrack ? "border-accent/20 bg-accent/5" : "border-muted"}`}>
+          <div className={`rounded-xl p-3 border ${savingsOnTrack ? "border-amber-400/20 bg-amber-400/5" : "border-muted"}`}>
             <div className="flex items-center gap-1.5 mb-1">
-              <Target size={13} className="text-accent" />
-              <span className="text-xs font-medium text-accent">Monthly Investable</span>
+              <Target size={13} className="text-amber-400" />
+              <span className="text-xs font-medium text-amber-400">Monthly Investable</span>
             </div>
             <p className="text-foreground font-bold text-sm">${analysis.monthlyInvestable.toFixed(0)}<span className="text-muted-foreground text-xs font-normal">/mo</span></p>
             <p className="text-xs text-muted-foreground mt-0.5">${analysis.annualInvestable.toFixed(0)}/year potential</p>
@@ -179,17 +179,17 @@ export function InvestmentSuggestions({ expenses, userProfile }: InvestmentSugge
       </div>
 
       {/* Growth projections */}
-      <div className="glass-card rounded-2xl p-4">
+      <div className="glass rounded-2xl p-4">
         <div className="flex items-center gap-2 mb-3">
-          <PieChart size={16} className="text-accent" />
+          <PieChart size={16} className="text-amber-400" />
           <h3 className="text-foreground font-semibold text-sm">Wealth Projections</h3>
           <span className="text-xs text-muted-foreground">(at 7% avg annual return)</span>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {[
             { label: "10 Years", value: fv10, color: "text-primary" },
-            { label: "20 Years", value: fv20, color: "text-accent" },
-            { label: `${userProfile.investmentHorizonYears} Yrs (Goal)`, value: fvHorizon, color: "text-emerald-400" },
+            { label: "20 Years", value: fv20, color: "text-amber-400" },
+            { label: `${userProfile.investmentHorizonYears} Yrs (Goal)`, value: fvHorizon, color: "text-primary" },
           ].map((item) => (
             <div key={item.label} className="bg-muted rounded-xl p-3 text-center">
               <p className={`text-lg font-bold ${item.color}`}>
@@ -209,7 +209,7 @@ export function InvestmentSuggestions({ expenses, userProfile }: InvestmentSugge
       </div>
 
       {/* Portfolio */}
-      <div className="glass-card rounded-2xl p-4">
+      <div className="glass rounded-2xl p-4">
         <div className="flex items-center gap-2 mb-3">
           <RiskIcon size={16} className="text-primary" />
           <h3 className="text-foreground font-semibold text-sm capitalize">
@@ -248,7 +248,7 @@ export function InvestmentSuggestions({ expenses, userProfile }: InvestmentSugge
 
       {/* Disclaimer */}
       <div className="rounded-xl border border-border p-3 text-xs text-muted-foreground flex gap-2">
-        <AlertTriangle size={13} className="shrink-0 mt-0.5 text-accent" />
+        <AlertTriangle size={13} className="shrink-0 mt-0.5 text-amber-400" />
         <span>
           These suggestions are for educational purposes only. Consult a licensed financial advisor before investing. Past performance doesn't guarantee future results.
         </span>

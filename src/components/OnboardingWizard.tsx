@@ -1,13 +1,5 @@
 import { useState } from "react";
-import {
-  DollarSign,
-  Shield,
-  Target,
-  TrendingUp,
-  ChevronRight,
-  ChevronLeft,
-  Check,
-} from "lucide-react";
+import { DollarSign, Shield, Target, TrendingUp, ChevronRight, ChevronLeft, Check, Zap } from "lucide-react";
 import { UserProfile } from "@/hooks/useAuth";
 
 type WizardProfile = Omit<UserProfile, "id" | "email" | "name" | "createdAt">;
@@ -18,38 +10,25 @@ interface OnboardingWizardProps {
 }
 
 const STEPS = [
-  { id: "income", label: "Income", icon: DollarSign },
-  { id: "benefits", label: "Benefits", icon: Shield },
-  { id: "expenses", label: "Fixed Expenses", icon: Target },
-  { id: "goals", label: "Goals", icon: TrendingUp },
+  { id: "income",   label: "Income",   icon: DollarSign, color: "text-primary",   bg: "bg-primary/15"  },
+  { id: "benefits", label: "Benefits", icon: Shield,     color: "text-violet-400", bg: "bg-violet-400/15" },
+  { id: "expenses", label: "Fixed",    icon: Target,     color: "text-amber-400",  bg: "bg-amber-400/15"  },
+  { id: "goals",    label: "Goals",    icon: TrendingUp, color: "text-primary",    bg: "bg-primary/15"  },
 ];
 
-function NumInput({
-  label,
-  hint,
-  value,
-  onChange,
-  prefix = "$",
-}: {
-  label: string;
-  hint?: string;
-  value: number;
-  onChange: (v: number) => void;
-  prefix?: string;
+function NumInput({ label, hint, value, onChange }: {
+  label: string; hint?: string; value: number; onChange: (v: number) => void;
 }) {
   return (
     <div>
       <label className="text-xs text-muted-foreground mb-1 block font-medium">{label}</label>
-      {hint && <p className="text-xs text-muted-foreground/70 mb-1.5">{hint}</p>}
+      {hint && <p className="text-[11px] text-muted-foreground/60 mb-1.5">{hint}</p>}
       <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{prefix}</span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-mono">$</span>
         <input
-          type="number"
-          min={0}
-          value={value || ""}
+          type="number" min={0} value={value || ""} placeholder="0"
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          placeholder="0"
-          className="w-full bg-muted border border-border rounded-lg pl-7 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          className="w-full bg-secondary border border-border rounded-xl pl-8 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary/50 font-mono transition-all"
         />
       </div>
     </div>
@@ -59,117 +38,93 @@ function NumInput({
 export function OnboardingWizard({ userName, onComplete }: OnboardingWizardProps) {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<WizardProfile>({
-    grossMonthlyIncome: 0,
-    netMonthlyIncome: 0,
-    health401kMonthly: 0,
-    otherPreTaxBenefits: 0,
-    rentMortgage: 0,
-    carPayment: 0,
-    insurancePremiums: 0,
-    subscriptions: 0,
-    otherFixedExpenses: 0,
-    savingsGoalPercent: 20,
-    investmentGoal: "retirement",
-    riskTolerance: "moderate",
-    investmentHorizonYears: 20,
+    grossMonthlyIncome: 0, netMonthlyIncome: 0, health401kMonthly: 0,
+    otherPreTaxBenefits: 0, rentMortgage: 0, carPayment: 0,
+    insurancePremiums: 0, subscriptions: 0, otherFixedExpenses: 0,
+    savingsGoalPercent: 20, investmentGoal: "retirement",
+    riskTolerance: "moderate", investmentHorizonYears: 20,
   });
 
-  const set = (key: keyof WizardProfile, value: unknown) =>
-    setData((d) => ({ ...d, [key]: value }));
-
-  const next = () => {
-    if (step < STEPS.length - 1) setStep((s) => s + 1);
-    else onComplete(data);
-  };
+  const set = (key: keyof WizardProfile, value: unknown) => setData((d) => ({ ...d, [key]: value }));
+  const next = () => step < STEPS.length - 1 ? setStep((s) => s + 1) : onComplete(data);
   const back = () => setStep((s) => s - 1);
-
   const firstName = userName.split(" ")[0];
+  const progress = ((step) / (STEPS.length - 1)) * 100;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4"
+      style={{backgroundImage:"radial-gradient(ellipse 70% 50% at 50% -10%, hsl(185 100% 50% / 0.05) 0%, transparent 70%)"}}>
       <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-6 animate-in-up">
-          <h2 className="text-2xl font-bold text-foreground">
+
+        {/* Logo + heading */}
+        <div className="text-center mb-7 animate-in-up">
+          <div className="w-12 h-12 rounded-2xl mx-auto mb-4 flex items-center justify-center pulse-glow"
+            style={{background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}>
+            <Zap size={22} className="text-black" />
+          </div>
+          <h2 className="text-2xl font-bold" style={{fontFamily:"'Syne',sans-serif"}}>
             Welcome, <span className="text-gradient-primary">{firstName}!</span>
           </h2>
-          <p className="text-muted-foreground text-sm mt-1">
-            Let's set up your financial profile (takes ~2 mins)
-          </p>
+          <p className="text-sm text-muted-foreground mt-1">Set up your financial profile — takes about 2 minutes</p>
         </div>
 
-        {/* Progress steps */}
-        <div className="flex items-center justify-between mb-6 px-2">
+        {/* Step indicators */}
+        <div className="flex items-center justify-between mb-6 px-1">
           {STEPS.map((s, i) => {
             const Icon = s.icon;
             const done = i < step;
             const active = i === step;
             return (
-              <div key={s.id} className="flex items-center">
-                <div className="flex flex-col items-center gap-1">
-                  <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                      done
-                        ? "bg-primary text-primary-foreground"
-                        : active
-                        ? "bg-primary/20 border-2 border-primary text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {done ? <Check size={15} /> : <Icon size={15} />}
+              <div key={s.id} className="flex items-center flex-1">
+                <div className="flex flex-col items-center gap-1 relative">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    done ? "bg-primary text-primary-foreground shadow-[0_0_12px_hsl(185,100%,50%,0.4)]"
+                    : active ? `${s.bg} border-2 border-current ${s.color}`
+                    : "bg-secondary text-muted-foreground border border-border"
+                  }`}>
+                    {done ? <Check size={14} /> : <Icon size={14} />}
                   </div>
-                  <span className={`text-[10px] font-medium ${active ? "text-primary" : "text-muted-foreground"}`}>
+                  <span className={`text-[10px] font-semibold uppercase tracking-wide ${active ? s.color : "text-muted-foreground"}`}>
                     {s.label}
                   </span>
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div className={`h-px flex-1 mx-2 mb-4 ${i < step ? "bg-primary" : "bg-border"}`} />
+                  <div className="flex-1 h-px mx-2 mb-5 transition-colors duration-500"
+                    style={{background: i < step ? "hsl(185,100%,50%)" : "hsl(240,6%,13%)"}} />
                 )}
               </div>
             );
           })}
         </div>
 
+        {/* Progress bar */}
+        <div className="h-0.5 bg-secondary rounded-full mb-5 overflow-hidden">
+          <div className="h-full rounded-full transition-all duration-500"
+            style={{width:`${((step+1)/STEPS.length)*100}%`, background:"linear-gradient(90deg,hsl(185,100%,40%),hsl(195,100%,55%))"}} />
+        </div>
+
         {/* Card */}
-        <div className="glass-card rounded-2xl p-6 space-y-4 animate-in-up" style={{ animationDelay: "60ms" }}>
+        <div className="glass-cyan rounded-2xl p-6 space-y-4 animate-in-up" style={{animationDelay:"60ms"}}>
+
           {step === 0 && (
             <>
-              <h3 className="text-foreground font-semibold text-base">Monthly Income</h3>
-              <NumInput
-                label="Gross Monthly Income (before taxes)"
-                hint="Your total salary ÷ 12"
-                value={data.grossMonthlyIncome}
-                onChange={(v) => set("grossMonthlyIncome", v)}
-              />
-              <NumInput
-                label="Net Monthly Income (take-home pay)"
-                hint="What hits your bank account each month"
-                value={data.netMonthlyIncome}
-                onChange={(v) => set("netMonthlyIncome", v)}
-              />
+              <h3 className="font-bold text-base" style={{fontFamily:"'Syne',sans-serif"}}>Monthly Income</h3>
+              <NumInput label="Gross Monthly Income (before taxes)" hint="Your total salary ÷ 12" value={data.grossMonthlyIncome} onChange={(v) => set("grossMonthlyIncome", v)} />
+              <NumInput label="Net Monthly Income (take-home)" hint="What actually hits your bank account" value={data.netMonthlyIncome} onChange={(v) => set("netMonthlyIncome", v)} />
             </>
           )}
 
           {step === 1 && (
             <>
-              <h3 className="text-foreground font-semibold text-base">Pre-Tax Benefits</h3>
-              <NumInput
-                label="Health Insurance + 401(k) Monthly Contribution"
-                hint="Total deducted before you receive pay"
-                value={data.health401kMonthly}
-                onChange={(v) => set("health401kMonthly", v)}
-              />
-              <NumInput
-                label="Other Pre-Tax Benefits (FSA, HSA, etc.)"
-                value={data.otherPreTaxBenefits}
-                onChange={(v) => set("otherPreTaxBenefits", v)}
-              />
+              <h3 className="font-bold text-base" style={{fontFamily:"'Syne',sans-serif"}}>Pre-Tax Benefits</h3>
+              <NumInput label="Health Insurance + 401(k) contribution" hint="Total deducted before you receive pay" value={data.health401kMonthly} onChange={(v) => set("health401kMonthly", v)} />
+              <NumInput label="Other Pre-Tax Benefits (FSA, HSA, etc.)" value={data.otherPreTaxBenefits} onChange={(v) => set("otherPreTaxBenefits", v)} />
             </>
           )}
 
           {step === 2 && (
             <>
-              <h3 className="text-foreground font-semibold text-base">Fixed Monthly Expenses</h3>
+              <h3 className="font-bold text-base" style={{fontFamily:"'Syne',sans-serif"}}>Fixed Monthly Expenses</h3>
               <NumInput label="Rent / Mortgage" value={data.rentMortgage} onChange={(v) => set("rentMortgage", v)} />
               <NumInput label="Car Payment" value={data.carPayment} onChange={(v) => set("carPayment", v)} />
               <NumInput label="Insurance Premiums" value={data.insurancePremiums} onChange={(v) => set("insurancePremiums", v)} />
@@ -180,38 +135,26 @@ export function OnboardingWizard({ userName, onComplete }: OnboardingWizardProps
 
           {step === 3 && (
             <>
-              <h3 className="text-foreground font-semibold text-base">Investment Goals & Risk</h3>
+              <h3 className="font-bold text-base" style={{fontFamily:"'Syne',sans-serif"}}>Investment Goals & Risk</h3>
 
               <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                  Savings Goal (% of net income)
+                <label className="text-xs text-muted-foreground mb-2 block font-medium">
+                  Savings Goal — <span className="text-primary font-bold">{data.savingsGoalPercent}% of net income</span>
                 </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min={0}
-                    max={60}
-                    value={data.savingsGoalPercent}
-                    onChange={(e) => set("savingsGoalPercent", Number(e.target.value))}
-                    className="flex-1 accent-primary"
-                  />
-                  <span className="text-primary font-bold text-sm w-10 text-right">{data.savingsGoalPercent}%</span>
-                </div>
+                <input type="range" min={0} max={60} value={data.savingsGoalPercent}
+                  onChange={(e) => set("savingsGoalPercent", Number(e.target.value))}
+                  className="w-full accent-primary h-1.5" />
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>0%</span><span>60%</span></div>
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Primary Investment Goal</label>
+                <label className="text-xs text-muted-foreground mb-2 block font-medium">Primary Investment Goal</label>
                 <div className="grid grid-cols-2 gap-2">
-                  {(["retirement", "property", "emergency", "growth"] as const).map((g) => (
-                    <button
-                      key={g}
-                      onClick={() => set("investmentGoal", g)}
-                      className={`py-2 px-3 rounded-lg text-xs font-medium border transition-all capitalize ${
-                        data.investmentGoal === g
-                          ? "bg-primary/20 border-primary text-primary"
-                          : "bg-muted border-border text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
+                  {(["retirement","property","emergency","growth"] as const).map((g) => (
+                    <button key={g} onClick={() => set("investmentGoal", g)}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-medium border transition-all ${
+                        data.investmentGoal === g ? "bg-primary/15 border-primary/40 text-primary" : "bg-secondary border-border text-muted-foreground hover:text-foreground hover:border-border/80"
+                      }`}>
                       {g === "retirement" ? "🏖 Retirement" : g === "property" ? "🏠 Property" : g === "emergency" ? "🛡 Emergency" : "📈 Growth"}
                     </button>
                   ))}
@@ -219,18 +162,13 @@ export function OnboardingWizard({ userName, onComplete }: OnboardingWizardProps
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block font-medium">Risk Tolerance</label>
+                <label className="text-xs text-muted-foreground mb-2 block font-medium">Risk Tolerance</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {(["conservative", "moderate", "aggressive"] as const).map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => set("riskTolerance", r)}
-                      className={`py-2 px-3 rounded-lg text-xs font-medium border transition-all capitalize ${
-                        data.riskTolerance === r
-                          ? "bg-primary/20 border-primary text-primary"
-                          : "bg-muted border-border text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
+                  {(["conservative","moderate","aggressive"] as const).map((r) => (
+                    <button key={r} onClick={() => set("riskTolerance", r)}
+                      className={`py-2.5 rounded-xl text-xs font-medium border transition-all ${
+                        data.riskTolerance === r ? "bg-primary/15 border-primary/40 text-primary" : "bg-secondary border-border text-muted-foreground hover:text-foreground"
+                      }`}>
                       {r === "conservative" ? "🛡 Safe" : r === "moderate" ? "⚖ Balanced" : "🚀 Growth"}
                     </button>
                   ))}
@@ -238,55 +176,34 @@ export function OnboardingWizard({ userName, onComplete }: OnboardingWizardProps
               </div>
 
               <div>
-                <label className="text-xs text-muted-foreground mb-1.5 block font-medium">
-                  Investment Horizon: <span className="text-primary font-bold">{data.investmentHorizonYears} years</span>
+                <label className="text-xs text-muted-foreground mb-2 block font-medium">
+                  Investment Horizon — <span className="text-primary font-bold">{data.investmentHorizonYears} years</span>
                 </label>
-                <input
-                  type="range"
-                  min={1}
-                  max={40}
-                  value={data.investmentHorizonYears}
+                <input type="range" min={1} max={40} value={data.investmentHorizonYears}
                   onChange={(e) => set("investmentHorizonYears", Number(e.target.value))}
-                  className="w-full accent-primary"
-                />
-                <div className="flex justify-between text-xs text-muted-foreground mt-0.5">
-                  <span>1 yr</span>
-                  <span>40 yrs</span>
-                </div>
+                  className="w-full accent-primary h-1.5" />
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>1 yr</span><span>40 yrs</span></div>
               </div>
             </>
           )}
         </div>
 
-        {/* Navigation buttons */}
+        {/* Nav buttons */}
         <div className="flex gap-3 mt-4">
           {step > 0 && (
-            <button
-              onClick={back}
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-muted text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
-            >
-              <ChevronLeft size={16} /> Back
+            <button onClick={back}
+              className="flex items-center gap-1.5 px-5 py-3 rounded-xl bg-secondary border border-border text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              <ChevronLeft size={15} /> Back
             </button>
           )}
-          <button
-            onClick={next}
-            className="flex-1 flex items-center justify-center gap-2 bg-primary hover:opacity-90 text-primary-foreground font-semibold py-2.5 rounded-xl transition-all text-sm"
-          >
-            {step === STEPS.length - 1 ? (
-              <>
-                <Check size={16} /> Complete Setup
-              </>
-            ) : (
-              <>
-                Next <ChevronRight size={16} />
-              </>
-            )}
+          <button onClick={next}
+            className="flex-1 flex items-center justify-center gap-2 font-semibold py-3 rounded-xl transition-all text-sm text-black"
+            style={{background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}>
+            {step === STEPS.length - 1 ? <><Check size={15} /> Complete Setup</> : <>Next <ChevronRight size={15} /></>}
           </button>
         </div>
 
-        <p className="text-xs text-muted-foreground text-center mt-3">
-          You can always update these in your profile settings
-        </p>
+        <p className="text-xs text-muted-foreground text-center mt-3">You can always update these in Profile settings</p>
       </div>
     </div>
   );
