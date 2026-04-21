@@ -1,5 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 
+export interface PaycheckRecord {
+  id: string;
+  amount: number;
+  date: string; // ISO date string YYYY-MM-DD
+}
+
+export interface SavingsAccount {
+  id: string;
+  name: string;
+  amountPerPaycheck: number;
+}
+
 export interface UserProfile {
   id: string;
   email: string;
@@ -17,6 +29,8 @@ export interface UserProfile {
   investmentGoal: "retirement" | "property" | "emergency" | "growth" | "other";
   riskTolerance: "conservative" | "moderate" | "aggressive";
   investmentHorizonYears: number;
+  paychecks: PaycheckRecord[];
+  savingsAccounts: SavingsAccount[];
   createdAt: number;
 }
 
@@ -188,6 +202,8 @@ export function useAuth() {
       investmentGoal: "retirement",
       riskTolerance: "moderate",
       investmentHorizonYears: 20,
+      paychecks: [],
+      savingsAccounts: [],
       createdAt: Date.now(),
     };
     users[id] = newUser;

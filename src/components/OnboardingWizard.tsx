@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { DollarSign, Shield, Target, TrendingUp, ChevronRight, ChevronLeft, Check, Zap } from "lucide-react";
-import { UserProfile } from "@/hooks/useAuth";
+import { DollarSign, Shield, Target, TrendingUp, ChevronRight, ChevronLeft, Check, Zap, PiggyBank, Trash2, Plus } from "lucide-react";
+import { UserProfile, SavingsAccount } from "@/hooks/useAuth";
 
 type WizardProfile = Omit<UserProfile, "id" | "email" | "name" | "createdAt">;
 
@@ -10,10 +10,11 @@ interface OnboardingWizardProps {
 }
 
 const STEPS = [
-  { id: "income",   label: "Income",   icon: DollarSign, color: "text-primary",   bg: "bg-primary/15"  },
-  { id: "benefits", label: "Benefits", icon: Shield,     color: "text-violet-400", bg: "bg-violet-400/15" },
-  { id: "expenses", label: "Fixed",    icon: Target,     color: "text-amber-400",  bg: "bg-amber-400/15"  },
-  { id: "goals",    label: "Goals",    icon: TrendingUp, color: "text-primary",    bg: "bg-primary/15"  },
+  { id: "income",   label: "Income",   icon: DollarSign,  color: "text-primary",    bg: "bg-primary/15"   },
+  { id: "benefits", label: "Benefits", icon: Shield,      color: "text-violet-400", bg: "bg-violet-400/15" },
+  { id: "expenses", label: "Fixed",    icon: Target,      color: "text-amber-400",  bg: "bg-amber-400/15"  },
+  { id: "goals",    label: "Goals",    icon: TrendingUp,  color: "text-primary",    bg: "bg-primary/15"    },
+  { id: "paycheck", label: "Paycheck", icon: PiggyBank,   color: "text-emerald-400", bg: "bg-emerald-400/15" },
 ];
 
 function NumInput({ label, hint, value, onChange }: {
@@ -37,7 +38,7 @@ function NumInput({ label, hint, value, onChange }: {
 
 export function OnboardingWizard({ userName, onComplete }: OnboardingWizardProps) {
   const [step, setStep] = useState(0);
-  const [data, setData] = useState<WizardProfile>({
+  const [data, setData] = useState<Omit<WizardProfile, "paychecks" | "savingsAccounts">>({
     grossMonthlyIncome: 0, netMonthlyIncome: 0, health401kMonthly: 0,
     otherPreTaxBenefits: 0, rentMortgage: 0, carPayment: 0,
     insurancePremiums: 0, subscriptions: 0, otherFixedExpenses: 0,
@@ -45,11 +46,39 @@ export function OnboardingWizard({ userName, onComplete }: OnboardingWizardProps
     riskTolerance: "moderate", investmentHorizonYears: 20,
   });
 
-  const set = (key: keyof WizardProfile, value: unknown) => setData((d) => ({ ...d, [key]: value }));
-  const next = () => step < STEPS.length - 1 ? setStep((s) => s + 1) : onComplete(data);
+  const [paycheckAmount, setPaycheckAmount] = useState(0);
+  const [savingsAccounts, setSavingsAccounts] = useState<SavingsAccount[]>([
+    { id: crypto.randomUUID(), name: "Amex Savings", amountPerPaycheck: 300 },
+    { id: crypto.randomUUID(), name: "DCU", amountPerPaycheck: 500 },
+  ]);
+
+  const set = (key: keyof typeof data, value: unknown) => setData((d) => ({ ...d, [key]: value }));
+
+  const next = () => {
+    if (step < STEPS.length - 1) {
+      setStep((s) => s + 1);
+    } else {
+      const today = new Date().toISOString().split("T")[0];
+      const paychecks = paycheckAmount > 0
+        ? [{ id: crypto.randomUUID(), amount: paycheckAmount, date: today }]
+        : [];
+      onComplete({ ...data, paychecks, savingsAccounts });
+    }
+  };
   const back = () => setStep((s) => s - 1);
   const firstName = userName.split(" ")[0];
-  const progress = ((step) / (STEPS.length - 1)) * 100;
+
+  const totalSavingsPerPaycheck = savingsAccounts.reduce((s, a) => s + a.amountPerPaycheck, 0);
+  const expenseLimit = paycheckAmount - totalSavingsPerPaycheck;
+
+  const addSavingsAccount = () =>
+    setSavingsAccounts((a) => [...a, { id: crypto.randomUUID(), name: "", amountPerPaycheck: 0 }]);
+
+  const updateAccount = (id: string, key: keyof SavingsAccount, value: string | number) =>
+    setSavingsAccounts((a) => a.map((acc) => acc.id === id ? { ...acc, [key]: value } : acc));
+
+  const removeAccount = (id: string) =>
+    setSavingsAccounts((a) => a.filter((acc) => acc.id !== id));
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4"
@@ -84,12 +113,12 @@ export function OnboardingWizard({ userName, onComplete }: OnboardingWizardProps
                   }`}>
                     {done ? <Check size={14} /> : <Icon size={14} />}
                   </div>
-                  <span className={`text-[10px] font-semibold uppercase tracking-wide ${active ? s.color : "text-muted-foreground"}`}>
+                  <span className={`text-[9px] font-semibold uppercase tracking-wide ${active ? s.color : "text-muted-foreground"}`}>
                     {s.label}
                   </span>
                 </div>
                 {i < STEPS.length - 1 && (
-                  <div className="flex-1 h-px mx-2 mb-5 transition-colors duration-500"
+                  <div className="flex-1 h-px mx-1 mb-5 transition-colors duration-500"
                     style={{background: i < step ? "hsl(185,100%,50%)" : "hsl(240,6%,13%)"}} />
                 )}
               </div>
@@ -184,6 +213,83 @@ export function OnboardingWizard({ userName, onComplete }: OnboardingWizardProps
                   className="w-full accent-primary h-1.5" />
                 <div className="flex justify-between text-[10px] text-muted-foreground mt-1"><span>1 yr</span><span>40 yrs</span></div>
               </div>
+            </>
+          )}
+
+          {step === 4 && (
+            <>
+              <h3 className="font-bold text-base" style={{fontFamily:"'Syne',sans-serif"}}>Paycheck & Savings</h3>
+              <p className="text-xs text-muted-foreground -mt-1">You're paid bi-weekly. We'll prompt you to update each paycheck.</p>
+
+              <NumInput
+                label="Most recent paycheck amount (take-home)"
+                hint="What hit your checking account this pay period"
+                value={paycheckAmount}
+                onChange={setPaycheckAmount}
+              />
+
+              {/* Savings accounts */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs text-muted-foreground font-medium">Savings deducted each paycheck</label>
+                  <button type="button" onClick={addSavingsAccount}
+                    className="flex items-center gap-1 text-[11px] text-primary font-medium">
+                    <Plus size={11} /> Add
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {savingsAccounts.map((acc) => (
+                    <div key={acc.id} className="flex gap-2 items-center">
+                      <input
+                        className="flex-1 bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                        placeholder="Account name"
+                        value={acc.name}
+                        onChange={(e) => updateAccount(acc.id, "name", e.target.value)}
+                      />
+                      <div className="relative w-24 shrink-0">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-mono">$</span>
+                        <input
+                          type="number" min={0}
+                          className="w-full bg-secondary border border-border rounded-xl pl-7 pr-2 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                          placeholder="0"
+                          value={acc.amountPerPaycheck || ""}
+                          onChange={(e) => updateAccount(acc.id, "amountPerPaycheck", parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
+                      <button type="button" onClick={() => removeAccount(acc.id)}
+                        className="text-muted-foreground hover:text-destructive p-1 shrink-0">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Live preview */}
+              {paycheckAmount > 0 && (
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 space-y-1.5">
+                  <p className="text-xs font-semibold text-primary">Per-paycheck breakdown</p>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Paycheck</span>
+                    <span className="font-mono text-foreground">${paycheckAmount.toLocaleString()}</span>
+                  </div>
+                  {savingsAccounts.map((acc) => acc.amountPerPaycheck > 0 && (
+                    <div key={acc.id} className="flex justify-between text-xs text-muted-foreground">
+                      <span>→ {acc.name || "Savings"}</span>
+                      <span className="font-mono text-amber-400">−${acc.amountPerPaycheck.toLocaleString()}</span>
+                    </div>
+                  ))}
+                  <div className="border-t border-border pt-1.5 flex justify-between text-xs font-semibold">
+                    <span>Expense limit / paycheck</span>
+                    <span className={`font-mono ${expenseLimit >= 0 ? "text-primary" : "text-destructive"}`}>
+                      ${Math.max(0, expenseLimit).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Monthly ≈ ${Math.max(0, expenseLimit * 2).toLocaleString()} (2 paychecks)
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>

@@ -2,10 +2,10 @@ import { useState } from "react";
 import {
   Wallet, TrendingUp, BarChart3, CalendarDays,
   ChevronLeft, ChevronRight, LayoutDashboard, LineChart,
-  Settings, LogOut, CreditCard, Sparkles, AlertTriangle, Zap,
+  Settings, LogOut, CreditCard, Sparkles, AlertTriangle, Zap, PiggyBank, X,
 } from "lucide-react";
 import { getExpenseCardOptions, useExpenses } from "@/hooks/useExpenses";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, PaycheckRecord } from "@/hooks/useAuth";
 import { StatCard } from "@/components/StatCard";
 import { ExpenseForm } from "@/components/ExpenseForm";
 import { ExpenseList } from "@/components/ExpenseList";
@@ -25,10 +25,37 @@ const MONTH_NAMES = [
 
 type Tab = "dashboard" | "investments" | "cards" | "settings";
 
+function getMonthBudget(user: ReturnType<typeof useAuth>["user"], year: number, month: number) {
+  if (!user) return null;
+  const paychecks = (user.paychecks || []).filter((p) => {
+    const d = new Date(p.date);
+    return d.getFullYear() === year && d.getMonth() + 1 === month;
+  });
+  const monthlyIncome = paychecks.reduce((s, p) => s + p.amount, 0);
+  const savingsAccounts = user.savingsAccounts || [];
+  const totalSavingsPerPaycheck = savingsAccounts.reduce((s, a) => s + a.amountPerPaycheck, 0);
+  const monthlySavings = totalSavingsPerPaycheck * paychecks.length;
+  const expenseLimit = monthlyIncome - monthlySavings;
+
+  if (paychecks.length === 0) {
+    const fixed = user.rentMortgage + user.carPayment + user.insurancePremiums + user.subscriptions + user.otherFixedExpenses;
+    return {
+      paychecks: [] as PaycheckRecord[],
+      monthlyIncome: user.netMonthlyIncome,
+      monthlySavings: (user.savingsGoalPercent / 100) * user.netMonthlyIncome,
+      expenseLimit: Math.max(0, user.netMonthlyIncome - fixed),
+      usingFallback: true,
+    };
+  }
+  return { paychecks, monthlyIncome, monthlySavings, expenseLimit: Math.max(0, expenseLimit), usingFallback: false };
+}
+
 export default function Index() {
   const { user, isLoggedIn, login, signup, logout, updateProfile, resetPassword } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("dashboard");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [paycheckInput, setPaycheckInput] = useState("");
+  const [dismissedPaycheckPrompt, setDismissedPaycheckPrompt] = useState(false);
 
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -67,6 +94,29 @@ export default function Index() {
     else setMonth((m) => m + 1);
   };
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1;
+
+  // Paycheck prompt logic
+  const allPaychecks = user?.paychecks || [];
+  const sortedPaychecks = [...allPaychecks].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const lastPaycheck = sortedPaychecks[0] ?? null;
+  const daysSinceLast = lastPaycheck
+    ? Math.floor((Date.now() - new Date(lastPaycheck.date).getTime()) / 86_400_000)
+    : null;
+  const needsPaycheckSetup = allPaychecks.length === 0;
+  const needsPaycheckUpdate = !needsPaycheckSetup && daysSinceLast !== null && daysSinceLast >= 13;
+  const showPaycheckBanner = isCurrentMonth && !dismissedPaycheckPrompt && (needsPaycheckSetup || needsPaycheckUpdate);
+
+  const handleAddPaycheck = () => {
+    const amount = parseFloat(paycheckInput);
+    if (!amount || amount <= 0 || !user) return;
+    const today = now.toISOString().split("T")[0];
+    const newEntry: PaycheckRecord = { id: crypto.randomUUID(), amount, date: today };
+    updateProfile({ paychecks: [...allPaychecks, newEntry] });
+    setPaycheckInput("");
+    setDismissedPaycheckPrompt(true);
+  };
+
+  const budget = getMonthBudget(user, year, month);
 
   const NAV_ITEMS: { id: Tab; label: string; icon: typeof LayoutDashboard }[] = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -107,7 +157,6 @@ export default function Index() {
       {/* Header */}
       <header className="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          {/* Logo */}
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-cyan-600 flex items-center justify-center pulse-glow"
               style={{background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}>
@@ -118,7 +167,6 @@ export default function Index() {
             </span>
           </div>
 
-          {/* Desktop nav */}
           <nav className="hidden sm:flex items-center gap-1">
             {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => setActiveTab(id)}
@@ -132,7 +180,6 @@ export default function Index() {
             ))}
           </nav>
 
-          {/* Right side */}
           <div className="flex items-center gap-2">
             {activeTab === "dashboard" && (
               <>
@@ -171,6 +218,52 @@ export default function Index() {
                 {MONTH_NAMES[month - 1]} {year} · spending overview
               </p>
             </div>
+
+            {/* Paycheck prompt banner */}
+            {showPaycheckBanner && (
+              <div className="glass rounded-xl p-4 border border-emerald-500/25 bg-emerald-500/5 animate-in-up">
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <PiggyBank size={16} className="text-emerald-400 shrink-0" />
+                    <p className="text-sm font-semibold text-foreground">
+                      {needsPaycheckSetup ? "Set up paycheck tracking" : "New paycheck?"}
+                    </p>
+                  </div>
+                  <button onClick={() => setDismissedPaycheckPrompt(true)} className="text-muted-foreground hover:text-foreground p-0.5">
+                    <X size={14} />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  {needsPaycheckSetup
+                    ? "Enter your most recent paycheck to calculate your monthly expense limit."
+                    : `It's been ${daysSinceLast} days since your last paycheck entry. Enter the new amount to update your budget.`}
+                </p>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-mono">$</span>
+                    <input
+                      type="number" min={0} placeholder="Paycheck amount"
+                      value={paycheckInput}
+                      onChange={(e) => setPaycheckInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddPaycheck()}
+                      className="w-full bg-secondary border border-border rounded-xl pl-8 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono"
+                    />
+                  </div>
+                  <button
+                    onClick={handleAddPaycheck}
+                    disabled={!paycheckInput || parseFloat(paycheckInput) <= 0}
+                    className="px-4 py-2 rounded-xl text-black text-sm font-semibold disabled:opacity-40 shrink-0"
+                    style={{background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}>
+                    Update
+                  </button>
+                </div>
+                {(user?.savingsAccounts || []).length > 0 && paycheckInput && parseFloat(paycheckInput) > 0 && (
+                  <p className="text-[11px] text-emerald-400 mt-2">
+                    Expense limit: ${Math.max(0, parseFloat(paycheckInput) - (user?.savingsAccounts || []).reduce((s, a) => s + a.amountPerPaycheck, 0)).toLocaleString()} after ${(user?.savingsAccounts || []).reduce((s, a) => s + a.amountPerPaycheck, 0).toLocaleString()} in savings
+                  </p>
+                )}
+              </div>
+            )}
 
             {expenses.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 gap-6 animate-fade-in">
@@ -211,28 +304,51 @@ export default function Index() {
                 </div>
 
                 {/* Budget bar */}
-                {user && user.netMonthlyIncome > 0 && (() => {
-                  const fixed = user.rentMortgage + user.carPayment + user.insurancePremiums + user.subscriptions + user.otherFixedExpenses;
-                  const disposable = user.netMonthlyIncome - fixed;
-                  const pct = Math.min(100, (monthTotal / disposable) * 100);
-                  const savingsTarget = (user.savingsGoalPercent / 100) * user.netMonthlyIncome;
-                  const investable = Math.max(0, disposable - monthTotal - savingsTarget * 0.5);
+                {budget && (() => {
+                  const pct = budget.expenseLimit > 0 ? Math.min(100, (monthTotal / budget.expenseLimit) * 100) : 0;
+                  const savingsAccounts = user?.savingsAccounts || [];
+                  const totalSavingsPerPaycheck = savingsAccounts.reduce((s, a) => s + a.amountPerPaycheck, 0);
+                  const investable = Math.max(0, budget.expenseLimit - monthTotal);
                   const barColor = pct > 90 ? "bg-destructive" : pct > 70 ? "bg-amber-400" : "bg-primary";
                   return (
-                    <div className="glass rounded-xl p-4">
-                      <div className="flex items-center justify-between mb-2">
+                    <div className="glass rounded-xl p-4 space-y-3">
+                      <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Monthly Budget</span>
                         <span className={`text-xs font-medium ${pct > 90 ? "text-destructive" : pct > 70 ? "text-amber-400" : "text-primary"}`}>
-                          ${monthTotal.toFixed(0)} / ${disposable.toFixed(0)}
+                          ${monthTotal.toFixed(0)} / ${budget.expenseLimit.toFixed(0)}
                         </span>
                       </div>
                       <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
                         <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
                       </div>
-                      <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
+                      <div className="flex justify-between text-xs text-muted-foreground">
                         <span>💰 Investable: <strong className="text-primary">${investable.toFixed(0)}</strong></span>
                         <span>{pct.toFixed(0)}% used</span>
                       </div>
+                      {budget.paychecks.length > 0 && (
+                        <div className="border-t border-border pt-2.5 grid grid-cols-3 gap-2">
+                          <div className="text-center">
+                            <p className="text-[10px] text-muted-foreground">Paychecks</p>
+                            <p className="text-xs font-bold text-foreground">${budget.monthlyIncome.toLocaleString()}</p>
+                            <p className="text-[10px] text-muted-foreground">{budget.paychecks.length} this month</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-muted-foreground">Savings</p>
+                            <p className="text-xs font-bold text-amber-400">−${budget.monthlySavings.toLocaleString()}</p>
+                            <p className="text-[10px] text-muted-foreground">${totalSavingsPerPaycheck}/paycheck</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-[10px] text-muted-foreground">Expense Limit</p>
+                            <p className="text-xs font-bold text-primary">${budget.expenseLimit.toLocaleString()}</p>
+                            <p className="text-[10px] text-muted-foreground">to spend</p>
+                          </div>
+                        </div>
+                      )}
+                      {budget.usingFallback && (
+                        <p className="text-[10px] text-muted-foreground">
+                          Add a paycheck in Profile to enable paycheck-based budgeting
+                        </p>
+                      )}
                     </div>
                   );
                 })()}
@@ -259,7 +375,7 @@ export default function Index() {
               <h1 className="text-xl font-bold">Investment <span className="text-gradient-primary">Suggestions</span></h1>
               <p className="text-sm text-muted-foreground">Personalised based on your spending trends & goals</p>
             </div>
-            <InvestmentSuggestions expenses={expenses} userProfile={user} />
+            <InvestmentSuggestions expenses={expenses} userProfile={user} currentMonth={month} currentYear={year} />
           </div>
         )}
 

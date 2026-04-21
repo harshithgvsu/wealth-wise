@@ -386,7 +386,7 @@ function AddCardSheet({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="glass w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto"
+        className="glass w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 h-[88vh] sm:h-auto sm:max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-bold text-foreground mb-4">Add a Credit Card</h2>

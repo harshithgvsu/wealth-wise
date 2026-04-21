@@ -6,14 +6,13 @@ A personal finance web app built with React, TypeScript, and Vite.
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - npm
 
 ### Install and run
 
 ```sh
-npm install
-npm run dev
+npm i; npm run dev
 ```
 
 The app runs locally with hot reloading. By default, Vite serves it at `http://localhost:8080`.
@@ -46,6 +45,7 @@ When this variable is set, the app will attempt to sync auth/profile/expense dat
 
 - `npm run dev` – start the development server
 - `npm run build` – create a production build
+- `npm run deploy` – create a production build on the branch gh-pages
 - `npm run preview` – preview the production build locally
 - `npm run lint` – run ESLint
 - `npm run test` – run tests once with Vitest
@@ -64,10 +64,10 @@ When this variable is set, the app will attempt to sync auth/profile/expense dat
 You can deploy the production build to any static hosting provider.
 
 ```sh
-npm run build
+npm run deploy 
 ```
 
-Then publish the generated `dist/` directory (for example on Netlify, Vercel, Cloudflare Pages, GitHub Pages, or an S3-backed static host).
+This has to be run after pushing your changes to GitHub, so this runs the pipeline and actually gets deployed
 
 ## Troubleshooting npm esbuild version mismatch
 
@@ -84,7 +84,7 @@ try this clean reinstall flow:
 rm -rf node_modules package-lock.json
 npm cache clean --force
 unset ESBUILD_BINARY_PATH
-npm install
+npm i
 ```
 
 This project pins `esbuild` via npm `overrides` to reduce version drift across transitive dependencies.
