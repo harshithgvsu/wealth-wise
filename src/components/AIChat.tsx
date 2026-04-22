@@ -69,7 +69,7 @@ function parseExpense(text: string, userId?: string): Omit<Expense, "id" | "crea
   if (!amount || amount <= 0) return null;
 
   let category: Category = "Other";
-  if (/food|lunch|dinner|coffee|restaurant|grocery|eat|breakfast/.test(lower)) category = "Food & Dining";
+  if (/food|lunch|dinner|coffee|restaurant|grocery|groceries|eat|breakfast|brunch/.test(lower)) category = "Food & Dining";
   else if (/uber|taxi|bus|gas|transport|commute/.test(lower)) category = "Transport";
   else if (/shop|amazon|cloth|buy/.test(lower)) category = "Shopping";
   else if (/doctor|pharmacy|health|gym|medicine/.test(lower)) category = "Health";
@@ -84,7 +84,7 @@ function parseExpense(text: string, userId?: string): Omit<Expense, "id" | "crea
   });
 
   const desc = text.replace(/\$?[\d]+(?:\.[\d]{1,2})?/, "")
-    .replace(/\b(spent|spend|paid|pay|for|on|added?|logged?|using|use|with)\b/gi, "")
+    .replace(/\b(add|spent|spend|paid|pay|for|on|added?|logged?|using|use|with|log)\b/gi, "")
     .replace(/\s+/g, " ").trim() || `${category} expense`;
 
   return { amount, category, description: desc.charAt(0).toUpperCase() + desc.slice(1), date: localDateString(), cardId: matched?.id, cardLabel: matched?.label };
@@ -99,10 +99,38 @@ export function AIChat({ expenses, userProfile, onAddExpense }: AIChatProps) {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [listening, setListening] = useState(false);
+  // Track visible viewport height so panel shrinks when iOS keyboard opens
+  const [viewportH, setViewportH] = useState<number | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const recRef = useRef<any>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, open]);
+
+  // Prevent body scroll while chat panel is open (iOS PWA fix)
+  useEffect(() => {
+    if (open) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [open]);
+
+  // Shrink panel when iOS keyboard opens — iOS doesn't resize the window,
+  // but it does update visualViewport. This keeps the input bar visible.
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setViewportH(vv.height);
+    update();
+    vv.addEventListener("resize", update);
+    vv.addEventListener("scroll", update);
+    return () => {
+      vv.removeEventListener("resize", update);
+      vv.removeEventListener("scroll", update);
+    };
+  }, [open]);
 
   const send = async (text: string) => {
     if (!text.trim()) return;
@@ -149,8 +177,8 @@ export function AIChat({ expenses, userProfile, onAddExpense }: AIChatProps) {
   return (
     <>
       <button onClick={() => setOpen(true)}
-        className="fixed right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center pulse-glow hover:opacity-90 transition-opacity text-black shadow-xl"
-        style={{bottom:"calc(1.5rem + env(safe-area-inset-bottom, 0px))"}}
+        className="fixed right-5 z-50 w-14 h-14 rounded-full flex items-center justify-center pulse-glow hover:opacity-90 transition-opacity text-black shadow-xl"
+        style={{bottom:"calc(4.75rem + env(safe-area-inset-bottom, 0px))"}}
         style={{background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}>
         <MessageSquare size={20} />
       </button>
@@ -158,8 +186,13 @@ export function AIChat({ expenses, userProfile, onAddExpense }: AIChatProps) {
       {open && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:justify-end sm:p-4">
           <div className="absolute inset-0 bg-black/60 sm:bg-transparent" onClick={() => setOpen(false)} />
-          <div className="relative w-full sm:w-96 h-[85vh] sm:h-[600px] glass rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden"
-            style={{border:"1px solid hsl(185 100% 50% / 0.15)"}}>
+          <div className="relative w-full sm:w-96 glass rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden"
+            style={{
+              // Use live visualViewport height when available (iOS keyboard shrinks it)
+              // Fall back to dvh which handles the dynamic viewport correctly
+              height: viewportH ? `${Math.min(viewportH * 0.92, 700)}px` : "min(88dvh, 88vh, 700px)",
+              border:"1px solid hsl(185 100% 50% / 0.15)"
+            }}>
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
               <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center">
@@ -185,7 +218,7 @@ export function AIChat({ expenses, userProfile, onAddExpense }: AIChatProps) {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3" style={{WebkitOverflowScrolling:"touch"} as React.CSSProperties}>
               {messages.map(msg => (
                 <div key={msg.id} className={`flex gap-2.5 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${msg.role === "assistant" ? "bg-primary/15" : "bg-secondary"}`}>
@@ -221,7 +254,7 @@ export function AIChat({ expenses, userProfile, onAddExpense }: AIChatProps) {
                 </div>
               )}
               <div className="flex gap-2">
-                <input type="text" value={input} onChange={e => setInput(e.target.value)}
+                <input ref={inputRef} type="text" value={input} onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && !e.shiftKey && send(input)}
                   placeholder='Ask anything or "Add $12 lunch"'
                   className="flex-1 bg-secondary border border-border rounded-xl px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary" />

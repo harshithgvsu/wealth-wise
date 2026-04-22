@@ -58,8 +58,13 @@ export function AuthPage({ onLogin, onSignup, onResetPassword }: AuthPageProps) 
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4"
-      style={{backgroundImage:"radial-gradient(ellipse 80% 60% at 50% -20%, hsl(185 100% 50% / 0.06) 0%, transparent 70%)"}}>
+    <div
+      className="min-h-screen bg-background flex flex-col items-center justify-start overflow-y-auto px-4 py-8"
+      style={{
+        paddingTop: "max(2rem, env(safe-area-inset-top, 20px))",
+        paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 16px))",
+        backgroundImage:"radial-gradient(ellipse 80% 60% at 50% -20%, hsl(185 100% 50% / 0.06) 0%, transparent 70%)"
+      }}>
       {/* Logo */}
       <div className="mb-8 flex flex-col items-center gap-3 animate-in-up">
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center pulse-glow"

@@ -187,3 +187,94 @@
     80% { transform: translateX(3px); }
   }
 }
+
+/* ── iOS input zoom fix ──────────────────────────────────────────────────────
+   iOS Safari auto-zooms any focused input with font-size < 16px.
+   This override forces 16px on all inputs/selects/textareas while keeping
+   the visual text-sm (14px) appearance via transform: scale().
+   Using font-size directly to avoid zoom without breaking the design.        */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Also apply globally for all browsers — 16px is readable and prevents zoom */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="search"],
+textarea,
+select {
+  font-size: max(16px, 1em);
+}
+
+/* ── iOS / Mobile scroll & touch fixes ──────────────────────────────────────*/
+
+/* Momentum scrolling for all overflow containers on iOS */
+.overflow-y-auto,
+.overflow-auto,
+.overflow-y-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent body scroll when a modal/sheet is open — iOS needs this */
+body.modal-open {
+  overflow: hidden;
+  position: fixed;
+  width: 100%;
+}
+
+/* Better tap highlight — removes grey flash on iOS tap */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Active state feedback for touch — replaces :hover which doesn't work on touch */
+button:active,
+[role="button"]:active {
+  opacity: 0.7;
+}
+
+/* Prevent text selection on buttons (accidental long-press selects text on iOS) */
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Native select appearance on iOS — removes default iOS chrome styling */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* ── Safe-area utility classes ───────────────────────────────────────────────
+   Used to push content clear of iPhone notch, Dynamic Island, and home bar.
+   Works on iPhone 13, 14, 15, 16 and all Pro/Plus/Max variants.           */
+
+/* Header: sits behind notch without this */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+/* Footer / bottom nav */
+.safe-bottom {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+}
+/* Full-screen pages that need top AND bottom padding */
+.safe-screen {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Page body: clears sticky header (height adapts to safe-area) */
+.page-top-offset {
+  /* header h-14 = 56px + notch safe area */
+  padding-top: calc(3.5rem + env(safe-area-inset-top, 0px));
+}
+
+/* Page body: clears fixed bottom nav (60px) + home bar */
+.page-bottom-offset {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+}

@@ -1,284 +1,112 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
-  CreditCard,
-  Plus,
-  Trash2,
-  Star,
-  Zap,
-  ShieldCheck,
-  TrendingUp,
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp,
-  Sparkles,
-  Gift,
+  CreditCard, Plus, Trash2, Star, Zap, ShieldCheck,
+  TrendingUp, AlertTriangle, ChevronDown, ChevronUp,
+  Sparkles, Gift, X, ChevronRight,
 } from "lucide-react";
 import type { Expense } from "@/hooks/useExpenses";
 import type { UserProfile } from "@/hooks/useAuth";
 
 // ─── Preset Card Catalogue ───────────────────────────────────────────────────
 interface PresetCard {
-  id: string;
-  name: string;
-  issuer: string;
+  id: string; name: string; issuer: string;
   network: "Visa" | "Mastercard" | "Amex" | "Discover";
-  annualFee: number;
-  signupBonus?: string;
-  signupSpend?: number; // spend required for signup bonus
-  rewards: { [category: string]: number }; // multiplier (e.g. 4 = 4x)
-  baseReward: number; // catch-all multiplier
-  rewardType: "points" | "cashback" | "miles";
-  centsPerPoint: number; // to normalise to cash value
-  color: string; // tailwind gradient class fragment (used inline)
-  cardBg: string;
+  annualFee: number; signupBonus?: string; signupSpend?: number;
+  rewards: { [category: string]: number };
+  baseReward: number; rewardType: "points" | "cashback" | "miles";
+  centsPerPoint: number; color: string; cardBg: string;
 }
 
 const PRESET_CARDS: PresetCard[] = [
-  {
-    id: "amex-gold",
-    name: "Gold Card",
-    issuer: "Amex",
-    network: "Amex",
-    annualFee: 250,
-    signupBonus: "60,000 pts ($600)",
-    signupSpend: 4000,
-    rewards: { "Food & Dining": 4, Restaurant: 4, Groceries: 4, "Travel": 3 },
-    baseReward: 1,
-    rewardType: "points",
-    centsPerPoint: 1.0,
-    color: "#D4A843",
-    cardBg: "from-yellow-700 via-yellow-600 to-yellow-400",
-  },
-  {
-    id: "chase-sapphire-preferred",
-    name: "Sapphire Preferred",
-    issuer: "Chase",
-    network: "Visa",
-    annualFee: 95,
-    signupBonus: "60,000 pts ($750 travel)",
-    signupSpend: 4000,
-    rewards: { Travel: 3, "Food & Dining": 3, Restaurant: 3, Streaming: 3 },
-    baseReward: 1,
-    rewardType: "points",
-    centsPerPoint: 1.25,
-    color: "#2A6FBF",
-    cardBg: "from-blue-900 via-blue-800 to-blue-600",
-  },
-  {
-    id: "chase-sapphire-reserve",
-    name: "Sapphire Reserve",
-    issuer: "Chase",
-    network: "Visa",
-    annualFee: 550,
-    signupBonus: "60,000 pts ($900 travel)",
-    signupSpend: 4000,
-    rewards: { Travel: 10, "Food & Dining": 3, Restaurant: 3, "Gas": 3 },
-    baseReward: 1,
-    rewardType: "points",
-    centsPerPoint: 1.5,
-    color: "#1A1A2E",
-    cardBg: "from-slate-900 via-slate-800 to-slate-700",
-  },
-  {
-    id: "citi-double-cash",
-    name: "Double Cash",
-    issuer: "Citi",
-    network: "Mastercard",
-    annualFee: 0,
-    rewards: {},
-    baseReward: 2,
-    rewardType: "cashback",
-    centsPerPoint: 1,
-    color: "#005792",
-    cardBg: "from-sky-900 via-sky-800 to-sky-600",
-  },
-  {
-    id: "amex-blue-cash-preferred",
-    name: "Blue Cash Preferred",
-    issuer: "Amex",
-    network: "Amex",
-    annualFee: 95,
-    signupBonus: "$250 statement credit",
-    signupSpend: 3000,
-    rewards: { Groceries: 6, "Streaming": 6, "Gas": 3, Transit: 3 },
-    baseReward: 1,
-    rewardType: "cashback",
-    centsPerPoint: 1,
-    color: "#1A5276",
-    cardBg: "from-blue-900 via-cyan-800 to-blue-500",
-  },
-  {
-    id: "discover-it",
-    name: "Discover it® Cash Back",
-    issuer: "Discover",
-    network: "Discover",
-    annualFee: 0,
-    signupBonus: "Cashback match first year",
-    signupSpend: 0,
-    rewards: { Groceries: 5, "Gas": 5, Restaurants: 5 },
-    baseReward: 1,
-    rewardType: "cashback",
-    centsPerPoint: 1,
-    color: "#F97316",
-    cardBg: "from-orange-700 via-orange-600 to-orange-400",
-  },
-  {
-    id: "venture-x",
-    name: "Venture X",
-    issuer: "Capital One",
-    network: "Visa",
-    annualFee: 395,
-    signupBonus: "75,000 miles ($750 travel)",
-    signupSpend: 4000,
-    rewards: { Travel: 10, "Food & Dining": 2, Restaurant: 2 },
-    baseReward: 2,
-    rewardType: "miles",
-    centsPerPoint: 1.0,
-    color: "#C0392B",
-    cardBg: "from-red-900 via-red-800 to-rose-600",
-  },
-  {
-    id: "apple-card",
-    name: "Apple Card",
-    issuer: "Goldman Sachs",
-    network: "Mastercard",
-    annualFee: 0,
-    rewards: { "Apple": 3 },
-    baseReward: 1,
-    rewardType: "cashback",
-    centsPerPoint: 1,
-    color: "#9CA3AF",
-    cardBg: "from-gray-600 via-gray-400 to-white",
-  },
+  { id:"amex-gold", name:"Gold Card", issuer:"Amex", network:"Amex", annualFee:250, signupBonus:"60,000 pts ($600)", signupSpend:4000, rewards:{"Food & Dining":4,Restaurant:4,Groceries:4,Travel:3}, baseReward:1, rewardType:"points", centsPerPoint:1.0, color:"#D4A843", cardBg:"from-yellow-700 via-yellow-600 to-yellow-400" },
+  { id:"chase-sapphire-preferred", name:"Sapphire Preferred", issuer:"Chase", network:"Visa", annualFee:95, signupBonus:"60,000 pts ($750 travel)", signupSpend:4000, rewards:{Travel:3,"Food & Dining":3,Restaurant:3,Streaming:3}, baseReward:1, rewardType:"points", centsPerPoint:1.25, color:"#2A6FBF", cardBg:"from-blue-900 via-blue-800 to-blue-600" },
+  { id:"chase-sapphire-reserve", name:"Sapphire Reserve", issuer:"Chase", network:"Visa", annualFee:550, signupBonus:"60,000 pts ($900 travel)", signupSpend:4000, rewards:{Travel:10,"Food & Dining":3,Restaurant:3,Gas:3}, baseReward:1, rewardType:"points", centsPerPoint:1.5, color:"#1A1A2E", cardBg:"from-slate-900 via-slate-800 to-slate-700" },
+  { id:"citi-double-cash", name:"Double Cash", issuer:"Citi", network:"Mastercard", annualFee:0, rewards:{}, baseReward:2, rewardType:"cashback", centsPerPoint:1, color:"#005792", cardBg:"from-sky-900 via-sky-800 to-sky-600" },
+  { id:"amex-blue-cash-preferred", name:"Blue Cash Preferred", issuer:"Amex", network:"Amex", annualFee:95, signupBonus:"$250 statement credit", signupSpend:3000, rewards:{Groceries:6,Streaming:6,Gas:3,Transit:3}, baseReward:1, rewardType:"cashback", centsPerPoint:1, color:"#1A5276", cardBg:"from-blue-900 via-cyan-800 to-blue-500" },
+  { id:"discover-it", name:"Discover it® Cash Back", issuer:"Discover", network:"Discover", annualFee:0, signupBonus:"Cashback match first year", signupSpend:0, rewards:{Groceries:5,Gas:5,Restaurants:5}, baseReward:1, rewardType:"cashback", centsPerPoint:1, color:"#F97316", cardBg:"from-orange-700 via-orange-600 to-orange-400" },
+  { id:"venture-x", name:"Venture X", issuer:"Capital One", network:"Visa", annualFee:395, signupBonus:"75,000 miles ($750 travel)", signupSpend:4000, rewards:{Travel:10,"Food & Dining":2,Restaurant:2}, baseReward:2, rewardType:"miles", centsPerPoint:1.0, color:"#C0392B", cardBg:"from-red-900 via-red-800 to-rose-600" },
+  { id:"apple-card", name:"Apple Card", issuer:"Goldman Sachs", network:"Mastercard", annualFee:0, rewards:{Apple:3}, baseReward:1, rewardType:"cashback", centsPerPoint:1, color:"#9CA3AF", cardBg:"from-gray-600 via-gray-400 to-white" },
 ];
 
-// ─── Types ────────────────────────────────────────────────────────────────────
 interface UserCard {
-  presetId?: string;
-  name: string;
-  issuer: string;
-  network: string;
-  annualFee: number;
-  rewardType: "points" | "cashback" | "miles";
-  baseReward: number;
-  rewards: { [category: string]: number };
-  centsPerPoint: number;
-  cardBg: string;
-  color: string;
-  creditLimit?: number;
-  currentBalance?: number;
-  signupBonus?: string;
-  signupSpend?: number;
-  spentTowardBonus?: number;
+  presetId?: string; name: string; issuer: string; network: string;
+  annualFee: number; rewardType: "points" | "cashback" | "miles";
+  baseReward: number; rewards: { [category: string]: number };
+  centsPerPoint: number; cardBg: string; color: string;
+  creditLimit?: number; currentBalance?: number;
+  signupBonus?: string; signupSpend?: number; spentTowardBonus?: number;
   id: string;
 }
 
-const CARDS_STORAGE_KEY = (userId?: string) => `spendwise_cards_${userId || "default"}`;
-
+const CARDS_KEY = (userId?: string) => `spendwise_cards_${userId || "default"}`;
 function loadCards(userId?: string): UserCard[] {
-  try {
-    return JSON.parse(localStorage.getItem(CARDS_STORAGE_KEY(userId)) || "[]");
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(localStorage.getItem(CARDS_KEY(userId)) || "[]"); }
+  catch { return []; }
 }
 function saveCards(cards: UserCard[], userId?: string) {
-  localStorage.setItem(CARDS_STORAGE_KEY(userId), JSON.stringify(cards));
+  localStorage.setItem(CARDS_KEY(userId), JSON.stringify(cards));
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
 const CATEGORY_MATCH: Record<string, string[]> = {
-  "Food & Dining": ["food", "dining", "restaurant", "eat", "lunch", "dinner", "breakfast", "cafe", "coffee"],
-  Groceries: ["grocery", "groceries", "supermarket", "market", "whole foods", "costco"],
-  Travel: ["travel", "flight", "hotel", "airbnb", "uber", "lyft", "taxi", "airline", "air"],
-  Gas: ["gas", "fuel", "shell", "chevron", "bp", "exxon"],
-  Streaming: ["netflix", "spotify", "hulu", "disney", "streaming", "apple tv", "hbo"],
-  Shopping: ["amazon", "shop", "store", "target", "walmart", "retail"],
-  Entertainment: ["entertainment", "movie", "concert", "show", "ticket"],
+  "Food & Dining": ["food","dining","restaurant","eat","lunch","dinner","breakfast","cafe","coffee"],
+  Groceries: ["grocery","groceries","supermarket","market","whole foods","costco"],
+  Travel: ["travel","flight","hotel","airbnb","uber","lyft","taxi","airline","air"],
+  Gas: ["gas","fuel","shell","chevron","bp","exxon"],
+  Streaming: ["netflix","spotify","hulu","disney","streaming","apple tv","hbo"],
+  Shopping: ["amazon","shop","store","target","walmart","retail"],
+  Entertainment: ["entertainment","movie","concert","show","ticket"],
 };
-
-function mapCategory(expenseCategory: string): string {
-  const lower = expenseCategory.toLowerCase();
-  for (const [cat, keywords] of Object.entries(CATEGORY_MATCH)) {
-    if (keywords.some((k) => lower.includes(k))) return cat;
+function mapCategory(cat: string): string {
+  const lower = cat.toLowerCase();
+  for (const [c, keys] of Object.entries(CATEGORY_MATCH)) {
+    if (keys.some(k => lower.includes(k))) return c;
   }
-  return expenseCategory;
+  return cat;
 }
-
-function getCardRate(card: UserCard, category: string): number {
-  const mapped = mapCategory(category);
-  return card.rewards[mapped] ?? card.rewards[category] ?? card.baseReward;
+function getCardRate(card: UserCard, cat: string): number {
+  const mapped = mapCategory(cat);
+  return card.rewards[mapped] ?? card.rewards[cat] ?? card.baseReward;
 }
-
-function getEffectiveCashback(card: UserCard, category: string, amount: number): number {
-  return (getCardRate(card, category) * card.centsPerPoint * amount) / 100;
+function getEffectiveCashback(card: UserCard, cat: string, amount: number): number {
+  return (getCardRate(card, cat) * card.centsPerPoint * amount) / 100;
 }
-
-function getBestCard(cards: UserCard[], category: string): UserCard | null {
+function getBestCard(cards: UserCard[], cat: string): UserCard | null {
   if (!cards.length) return null;
   return cards.reduce((best, card) =>
-    getCardRate(card, category) * card.centsPerPoint >
-    getCardRate(best, category) * best.centsPerPoint
-      ? card
-      : best
+    getCardRate(card, cat) * card.centsPerPoint > getCardRate(best, cat) * best.centsPerPoint ? card : best
   );
 }
-
-// ─── Recommended Next Card ────────────────────────────────────────────────────
-function recommendNextCard(
-  owned: UserCard[],
-  expenses: Expense[]
-): { card: PresetCard; reason: string } | null {
-  const ownedIds = new Set(owned.map((c) => c.presetId).filter(Boolean));
-  const available = PRESET_CARDS.filter((c) => !ownedIds.has(c.id));
-  if (!available.length) return null;
-
-  // tally spend per mapped category
+function recommendNextCard(owned: UserCard[], expenses: Expense[]): { card: PresetCard; reason: string } | null {
+  const ownedIds = new Set(owned.map(c => c.presetId).filter(Boolean));
+  const available = PRESET_CARDS.filter(c => !ownedIds.has(c.id));
+  if (!available.length || !expenses.length) return null;
   const catTotals: Record<string, number> = {};
-  for (const e of expenses) {
-    const cat = mapCategory(e.category);
-    catTotals[cat] = (catTotals[cat] || 0) + e.amount;
-  }
-
-  let best: PresetCard | null = null;
-  let bestLift = -1;
-  let bestReason = "";
-
+  for (const e of expenses) { const c = mapCategory(e.category); catTotals[c] = (catTotals[c] || 0) + e.amount; }
+  let best: PresetCard | null = null, bestLift = 0, bestReason = "";
   for (const preset of available) {
-    let lift = 0;
-    let topCat = "";
-    let topLift = 0;
+    let lift = 0, topCat = "", topLift = 0;
     for (const [cat, spend] of Object.entries(catTotals)) {
       const newRate = (preset.rewards[cat] ?? preset.baseReward) * preset.centsPerPoint;
-      const currentBest = owned.length
-        ? Math.max(...owned.map((c) => getCardRate(c, cat) * c.centsPerPoint))
-        : 0;
-      const catLift = ((newRate - currentBest) / 100) * spend;
+      const cur = owned.length ? Math.max(...owned.map(c => getCardRate(c, cat) * c.centsPerPoint)) : 0;
+      const catLift = ((newRate - cur) / 100) * spend;
       lift += catLift;
       if (catLift > topLift) { topLift = catLift; topCat = cat; }
     }
-    // factor in annual fee (monthly cost)
-    const netAnnualLift = lift * 12 - preset.annualFee;
-    if (netAnnualLift > bestLift) {
-      bestLift = netAnnualLift;
-      best = preset;
+    const net = lift * 12 - preset.annualFee;
+    if (net > bestLift) {
+      bestLift = net; best = preset;
       bestReason = topCat
-        ? `Adds ${(preset.rewards[topCat] ?? preset.baseReward) * preset.centsPerPoint}% on ${topCat} — your biggest spend gap. Estimated +$${Math.max(0, netAnnualLift).toFixed(0)}/yr net of the $${preset.annualFee} annual fee.`
-        : `Best overall cashback lift (+$${Math.max(0, netAnnualLift).toFixed(0)}/yr net).`;
+        ? `Adds ${(preset.rewards[topCat] ?? preset.baseReward) * preset.centsPerPoint}% on ${topCat}. Est. +$${Math.max(0, net).toFixed(0)}/yr net of the $${preset.annualFee} annual fee.`
+        : `Best overall lift (+$${Math.max(0, net).toFixed(0)}/yr net).`;
     }
   }
-
   return best ? { card: best, reason: bestReason } : null;
 }
 
 // ─── Card Visual ──────────────────────────────────────────────────────────────
 function CardVisual({ card, small = false }: { card: UserCard | PresetCard; small?: boolean }) {
   return (
-    <div
-      className={`relative rounded-xl bg-gradient-to-br ${card.cardBg} overflow-hidden ${
-        small ? "h-16 w-28" : "h-40 w-full"
-      } flex flex-col justify-between p-3 shadow-lg`}
-    >
+    <div className={`relative rounded-xl bg-gradient-to-br ${card.cardBg} overflow-hidden ${small ? "h-16 w-28" : "h-40 w-full"} flex flex-col justify-between p-3 shadow-lg`}>
       <div className={`flex justify-between items-start ${small ? "text-[8px]" : "text-xs"} text-white/80`}>
         <span className="font-bold">{card.issuer}</span>
         <span>{card.network}</span>
@@ -296,14 +124,12 @@ function CardVisual({ card, small = false }: { card: UserCard | PresetCard; smal
   );
 }
 
-// ─── Add Card Sheet ───────────────────────────────────────────────────────────
-function AddCardSheet({
-  onAdd,
-  onClose,
-}: {
-  onAdd: (card: UserCard) => void;
-  onClose: () => void;
-}) {
+// ─── Shared input/label styles ────────────────────────────────────────────────
+const inp = "w-full bg-secondary text-foreground rounded-xl px-3 py-3 border border-border placeholder:text-muted-foreground focus:outline-none focus:border-primary/50";
+const lbl = "text-xs text-muted-foreground mb-1.5 block font-medium";
+
+// ─── Add Card Sheet — fully rebuilt for iOS PWA ───────────────────────────────
+function AddCardSheet({ onAdd, onClose }: { onAdd: (card: UserCard) => void; onClose: () => void }) {
   const [mode, setMode] = useState<"preset" | "custom">("preset");
   const [selected, setSelected] = useState<PresetCard | null>(null);
   const [creditLimit, setCreditLimit] = useState("");
@@ -317,213 +143,289 @@ function AddCardSheet({
   const [customFee, setCustomFee] = useState("0");
   const [customBase, setCustomBase] = useState("1");
   const [customRewardType, setCustomRewardType] = useState<"cashback" | "points" | "miles">("cashback");
-  const [customCentsPerPoint, setCustomCentsPerPoint] = useState("1");
+  const [customCPP, setCustomCPP] = useState("1");
   const [customRewards, setCustomRewards] = useState<{ category: string; rate: string }[]>([]);
-  const [customSignupBonus, setCustomSignupBonus] = useState("");
-  const [customSignupSpend, setCustomSignupSpend] = useState("");
+  const [customBonus, setCustomBonus] = useState("");
+  const [customBonusSpend, setCustomBonusSpend] = useState("");
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Prevent body scroll while sheet is open (iOS PWA fix)
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   const NETWORK_COLORS: Record<string, { cardBg: string; color: string }> = {
-    Visa: { cardBg: "from-blue-900 via-blue-800 to-blue-600", color: "#2563EB" },
-    Mastercard: { cardBg: "from-red-900 via-orange-800 to-orange-600", color: "#EA580C" },
-    Amex: { cardBg: "from-cyan-900 via-teal-800 to-teal-600", color: "#0D9488" },
-    Discover: { cardBg: "from-orange-800 via-orange-600 to-orange-400", color: "#F97316" },
+    Visa: { cardBg:"from-blue-900 via-blue-800 to-blue-600", color:"#2563EB" },
+    Mastercard: { cardBg:"from-red-900 via-orange-800 to-orange-600", color:"#EA580C" },
+    Amex: { cardBg:"from-cyan-900 via-teal-800 to-teal-600", color:"#0D9488" },
+    Discover: { cardBg:"from-orange-800 via-orange-600 to-orange-400", color:"#F97316" },
   };
 
-  const addCustomRewardRow = () => setCustomRewards((r) => [...r, { category: "", rate: "" }]);
-  const updateCustomReward = (i: number, key: "category" | "rate", val: string) =>
-    setCustomRewards((r) => r.map((row, idx) => (idx === i ? { ...row, [key]: val } : row)));
-  const removeCustomReward = (i: number) => setCustomRewards((r) => r.filter((_, idx) => idx !== i));
+  const canAdd = mode === "preset" ? !!selected : !!(customName.trim() && customIssuer.trim());
 
   const handleAdd = () => {
+    if (!canAdd) return;
     if (mode === "preset" && selected) {
-      const card: UserCard = {
-        id: crypto.randomUUID(),
-        presetId: selected.id,
-        name: selected.name,
-        issuer: selected.issuer,
-        network: selected.network,
-        annualFee: selected.annualFee,
-        rewardType: selected.rewardType,
-        baseReward: selected.baseReward,
-        rewards: selected.rewards,
-        centsPerPoint: selected.centsPerPoint,
-        cardBg: selected.cardBg,
-        color: selected.color,
+      onAdd({
+        id: crypto.randomUUID(), presetId: selected.id,
+        name: selected.name, issuer: selected.issuer, network: selected.network,
+        annualFee: selected.annualFee, rewardType: selected.rewardType,
+        baseReward: selected.baseReward, rewards: selected.rewards,
+        centsPerPoint: selected.centsPerPoint, cardBg: selected.cardBg, color: selected.color,
         creditLimit: creditLimit ? Number(creditLimit) : undefined,
         currentBalance: balance ? Number(balance) : undefined,
-        signupBonus: selected.signupBonus,
-        signupSpend: selected.signupSpend,
+        signupBonus: selected.signupBonus, signupSpend: selected.signupSpend,
         spentTowardBonus: spentBonus ? Number(spentBonus) : 0,
-      };
-      onAdd(card);
-    } else if (mode === "custom" && customName && customIssuer) {
+      });
+    } else {
       const rewards: Record<string, number> = {};
-      for (const r of customRewards) {
-        if (r.category && r.rate) rewards[r.category] = Number(r.rate) || 1;
-      }
+      for (const r of customRewards) { if (r.category && r.rate) rewards[r.category] = Number(r.rate) || 1; }
       const nc = NETWORK_COLORS[customNetwork];
-      const card: UserCard = {
-        id: crypto.randomUUID(),
-        name: customName,
-        issuer: customIssuer,
-        network: customNetwork,
-        annualFee: Number(customFee) || 0,
-        rewardType: customRewardType,
-        baseReward: Number(customBase) || 1,
-        rewards,
-        centsPerPoint: Number(customCentsPerPoint) || 1,
-        cardBg: nc.cardBg,
-        color: nc.color,
+      onAdd({
+        id: crypto.randomUUID(), name: customName, issuer: customIssuer,
+        network: customNetwork, annualFee: Number(customFee) || 0,
+        rewardType: customRewardType, baseReward: Number(customBase) || 1,
+        rewards, centsPerPoint: Number(customCPP) || 1,
+        cardBg: nc.cardBg, color: nc.color,
         creditLimit: creditLimit ? Number(creditLimit) : undefined,
         currentBalance: balance ? Number(balance) : undefined,
-        signupBonus: customSignupBonus || undefined,
-        signupSpend: customSignupSpend ? Number(customSignupSpend) : undefined,
-      };
-      onAdd(card);
+        signupBonus: customBonus || undefined,
+        signupSpend: customBonusSpend ? Number(customBonusSpend) : undefined,
+      });
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    /*
+      OVERLAY covers the full screen including safe areas so the dark
+      scrim is wall-to-wall. Tap outside the sheet to close.
+    */
+    <div
+      className="fixed inset-0 z-[200] bg-black/70"
+      onClick={onClose}
+    >
+      {/*
+        SHEET anchored to the bottom of the screen.
+        — No paddingBottom on this wrapper (would shrink the flex scroll area)
+        — max-height: 92dvh keeps the sheet from covering the full screen
+        — dvh = dynamic viewport height, which on iOS already accounts for
+          the collapsible address bar and notch
+      */}
       <div
-        className="glass w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 h-[88vh] sm:h-auto sm:max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
+        className="absolute bottom-0 left-0 right-0 bg-card rounded-t-2xl flex flex-col"
+        style={{ maxHeight: "92dvh" }}
+        onClick={e => e.stopPropagation()}
       >
-        <h2 className="text-lg font-bold text-foreground mb-4">Add a Credit Card</h2>
+        {/* Drag handle */}
+        <div className="flex-shrink-0 flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full bg-border" />
+        </div>
 
-        {/* Mode toggle */}
-        <div className="flex bg-secondary rounded-xl p-1 mb-4 gap-1">
-          {(["preset", "custom"] as const).map((m) => (
+        {/* Header — never scrolls */}
+        <div className="flex-shrink-0 flex items-center justify-between px-5 pt-2 pb-3 border-b border-border">
+          <h2 className="text-base font-bold" style={{fontFamily:"'Syne',sans-serif"}}>Add a Credit Card</h2>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-muted-foreground active:opacity-60"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Mode toggle — never scrolls */}
+        <div className="flex-shrink-0 flex bg-secondary rounded-xl mx-5 mt-3 mb-2 p-1 gap-1">
+          {(["preset", "custom"] as const).map(m => (
             <button
               key={m}
               onClick={() => setMode(m)}
-              className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-              }`}
+              className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-colors active:opacity-70 ${mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
             >
-              {m === "preset" ? "Choose from list" : "Add custom card"}
+              {m === "preset" ? "Choose from list" : "Custom card"}
             </button>
           ))}
         </div>
 
-        {mode === "preset" ? (
-          <div className="grid grid-cols-2 gap-2 mb-4">
-            {PRESET_CARDS.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setSelected(selected?.id === p.id ? null : p)}
-                className={`rounded-xl p-2 border-2 transition-all text-left ${
-                  selected?.id === p.id
-                    ? "border-primary"
-                    : "border-border hover:border-primary/40"
-                }`}
-              >
-                <CardVisual card={p} small />
-                <p className="text-[11px] font-semibold text-foreground mt-1.5 leading-tight">
-                  {p.issuer} {p.name}
-                </p>
-                <p className="text-[10px] text-muted-foreground">
-                  ${p.annualFee}/yr · {p.baseReward}{p.rewardType === "cashback" ? "%" : "x"}
-                </p>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-3 mb-4">
-            <input className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border placeholder:text-muted-foreground" placeholder="Card name (e.g. My Visa)" value={customName} onChange={(e) => setCustomName(e.target.value)} />
-            <input className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border placeholder:text-muted-foreground" placeholder="Issuer (e.g. Chase, Capital One)" value={customIssuer} onChange={(e) => setCustomIssuer(e.target.value)} />
-
-            {/* Network & Reward Type */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Network</label>
-                <select className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" value={customNetwork} onChange={(e) => setCustomNetwork(e.target.value as any)}>
-                  {(["Visa", "Mastercard", "Amex", "Discover"] as const).map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
+        {/*
+          SCROLLABLE CONTENT AREA
+          min-h-0 is essential — without it flex children won't shrink
+          below their natural height and overflow-y-auto won't activate on iOS.
+          -webkit-overflow-scrolling: touch enables momentum scroll.
+          overscrollBehavior: contain stops the background page from scrolling.
+        */}
+        <div
+          ref={scrollRef}
+          className="flex-1 min-h-0 overflow-y-auto px-5 pt-2 pb-4"
+          style={{
+            WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain",
+          } as React.CSSProperties}
+        >
+          {/* ── PRESET MODE ── */}
+          {mode === "preset" && (
+            <>
+              <div className="grid grid-cols-2 gap-2.5 mb-4">
+                {PRESET_CARDS.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelected(selected?.id === p.id ? null : p)}
+                    className={`rounded-xl p-2.5 border-2 transition-all text-left active:scale-95 ${
+                      selected?.id === p.id ? "border-primary bg-primary/5" : "border-border"
+                    }`}
+                  >
+                    <CardVisual card={p} small />
+                    <p className="text-[11px] font-semibold text-foreground mt-2 leading-tight">{p.issuer} {p.name}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">${p.annualFee}/yr · {p.baseReward}{p.rewardType === "cashback" ? "%" : "x"}</p>
+                  </button>
+                ))}
               </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Reward Type</label>
-                <select className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" value={customRewardType} onChange={(e) => setCustomRewardType(e.target.value as any)}>
-                  {(["cashback", "points", "miles"] as const).map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Base Reward & Annual Fee */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Annual Fee ($)</label>
-                <input type="number" className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" value={customFee} onChange={(e) => setCustomFee(e.target.value)} />
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Base Reward (%/x)</label>
-                <input type="number" step="0.5" className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" value={customBase} onChange={(e) => setCustomBase(e.target.value)} />
-              </div>
-            </div>
-
-            {/* Cents per point (for points/miles) */}
-            {customRewardType !== "cashback" && (
-              <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Cents per point/mile (valuation)</label>
-                <input type="number" step="0.1" className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" value={customCentsPerPoint} onChange={(e) => setCustomCentsPerPoint(e.target.value)} />
-              </div>
-            )}
-
-            {/* Category-specific rewards */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="text-xs text-muted-foreground">Bonus Categories</label>
-                <button type="button" onClick={addCustomRewardRow} className="text-[10px] text-primary font-medium flex items-center gap-0.5">
-                  <Plus size={10} /> Add category
-                </button>
-              </div>
-              {customRewards.map((r, i) => (
-                <div key={i} className="flex gap-2 mb-1.5">
-                  <input className="flex-1 bg-secondary text-foreground rounded-lg px-2 py-1.5 text-xs border border-border placeholder:text-muted-foreground" placeholder="e.g. Travel" value={r.category} onChange={(e) => updateCustomReward(i, "category", e.target.value)} />
-                  <input type="number" step="0.5" className="w-16 bg-secondary text-foreground rounded-lg px-2 py-1.5 text-xs border border-border" placeholder="x" value={r.rate} onChange={(e) => updateCustomReward(i, "rate", e.target.value)} />
-                  <button type="button" onClick={() => removeCustomReward(i)} className="text-muted-foreground hover:text-destructive p-1"><Trash2 size={12} /></button>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={lbl}>Credit limit ($)</label>
+                    <input type="number" inputMode="decimal" className={inp} placeholder="Optional" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className={lbl}>Current balance ($)</label>
+                    <input type="number" inputMode="decimal" className={inp} placeholder="Optional" value={balance} onChange={e => setBalance(e.target.value)} />
+                  </div>
                 </div>
-              ))}
-            </div>
+                {selected?.signupBonus && (
+                  <div>
+                    <label className={lbl}>Already spent toward signup bonus ($)</label>
+                    <input type="number" inputMode="decimal" className={inp} placeholder="0" value={spentBonus} onChange={e => setSpentBonus(e.target.value)} />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
-            {/* Signup Bonus */}
-            <div className="grid grid-cols-2 gap-2">
+          {/* ── CUSTOM MODE ── */}
+          {mode === "custom" && (
+            <div className="space-y-4">
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Signup Bonus</label>
-                <input className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border placeholder:text-muted-foreground" placeholder="e.g. 50,000 pts" value={customSignupBonus} onChange={(e) => setCustomSignupBonus(e.target.value)} />
+                <label className={lbl}>Card name</label>
+                <input className={inp} placeholder="e.g. My Chase Visa" value={customName} onChange={e => setCustomName(e.target.value)} />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">Required Spend ($)</label>
-                <input type="number" className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" placeholder="Optional" value={customSignupSpend} onChange={(e) => setCustomSignupSpend(e.target.value)} />
+                <label className={lbl}>Issuer (bank)</label>
+                <input className={inp} placeholder="e.g. Chase, Capital One, Citi" value={customIssuer} onChange={e => setCustomIssuer(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={lbl}>Network</label>
+                  <select className={inp} value={customNetwork} onChange={e => setCustomNetwork(e.target.value as any)}>
+                    {(["Visa","Mastercard","Amex","Discover"] as const).map(n => <option key={n} value={n}>{n}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={lbl}>Reward type</label>
+                  <select className={inp} value={customRewardType} onChange={e => setCustomRewardType(e.target.value as any)}>
+                    {(["cashback","points","miles"] as const).map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={lbl}>Annual fee ($)</label>
+                  <input type="number" inputMode="decimal" className={inp} placeholder="0" value={customFee} onChange={e => setCustomFee(e.target.value)} />
+                </div>
+                <div>
+                  <label className={lbl}>Base reward (%/x)</label>
+                  <input type="number" inputMode="decimal" step="0.5" className={inp} placeholder="1" value={customBase} onChange={e => setCustomBase(e.target.value)} />
+                </div>
+              </div>
+              {customRewardType !== "cashback" && (
+                <div>
+                  <label className={lbl}>Cents per point / mile</label>
+                  <input type="number" inputMode="decimal" step="0.1" className={inp} placeholder="1.0" value={customCPP} onChange={e => setCustomCPP(e.target.value)} />
+                </div>
+              )}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className={lbl + " mb-0"}>Bonus categories</label>
+                  <button
+                    type="button"
+                    onClick={() => setCustomRewards(r => [...r, { category: "", rate: "" }])}
+                    className="text-xs text-primary font-medium flex items-center gap-1 py-1.5 px-3 rounded-lg bg-primary/10 active:opacity-60"
+                  >
+                    <Plus size={12} /> Add
+                  </button>
+                </div>
+                {customRewards.map((r, i) => (
+                  <div key={i} className="flex gap-2 mb-2.5 items-center">
+                    <input
+                      className="flex-1 bg-secondary text-foreground rounded-xl px-3 py-3 border border-border placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                      placeholder="e.g. Travel"
+                      value={r.category}
+                      onChange={e => setCustomRewards(rows => rows.map((row, idx) => idx === i ? {...row, category: e.target.value} : row))}
+                    />
+                    <input
+                      type="number" inputMode="decimal" step="0.5"
+                      className="w-20 bg-secondary text-foreground rounded-xl px-3 py-3 border border-border focus:outline-none focus:border-primary/50"
+                      placeholder="3x"
+                      value={r.rate}
+                      onChange={e => setCustomRewards(rows => rows.map((row, idx) => idx === i ? {...row, rate: e.target.value} : row))}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCustomRewards(rows => rows.filter((_, idx) => idx !== i))}
+                      className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-xl bg-destructive/10 text-destructive active:opacity-60"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={lbl}>Signup bonus</label>
+                  <input className={inp} placeholder="e.g. 60,000 pts" value={customBonus} onChange={e => setCustomBonus(e.target.value)} />
+                </div>
+                <div>
+                  <label className={lbl}>Required spend ($)</label>
+                  <input type="number" inputMode="decimal" className={inp} placeholder="Optional" value={customBonusSpend} onChange={e => setCustomBonusSpend(e.target.value)} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={lbl}>Credit limit ($)</label>
+                  <input type="number" inputMode="decimal" className={inp} placeholder="Optional" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
+                </div>
+                <div>
+                  <label className={lbl}>Current balance ($)</label>
+                  <input type="number" inputMode="decimal" className={inp} placeholder="Optional" value={balance} onChange={e => setBalance(e.target.value)} />
+                </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Optional fields */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Credit Limit ($)</label>
-            <input type="number" className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" placeholder="Optional" value={creditLimit} onChange={(e) => setCreditLimit(e.target.value)} />
-          </div>
-          <div>
-            <label className="text-xs text-muted-foreground mb-1 block">Current Balance ($)</label>
-            <input type="number" className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" placeholder="Optional" value={balance} onChange={(e) => setBalance(e.target.value)} />
-          </div>
+          )}
+          {/* Breathing room so last field clears sticky footer */}
+          <div className="h-2" />
         </div>
-        {(mode === "preset" && selected?.signupBonus) && (
-          <div className="mb-4">
-            <label className="text-xs text-muted-foreground mb-1 block">Already spent toward signup bonus ($)</label>
-            <input type="number" className="w-full bg-secondary text-foreground rounded-lg px-3 py-2 text-sm border border-border" placeholder="0" value={spentBonus} onChange={(e) => setSpentBonus(e.target.value)} />
-          </div>
-        )}
 
-        <div className="flex gap-2">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl bg-secondary text-muted-foreground text-sm font-medium">Cancel</button>
+        {/*
+          STICKY FOOTER — outside the scroll area, always visible.
+          paddingBottom: max(1rem, safe-area-inset-bottom) clears the home
+          indicator on iPhone 13/14/15/16 and all Pro/Plus/Max variants.
+          max() ensures at least 16px even on phones with no home indicator.
+        */}
+        <div
+          className="flex-shrink-0 flex gap-3 px-5 pt-3 border-t border-border bg-card"
+          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
+        >
+          <button
+            onClick={onClose}
+            className="flex-1 py-3.5 rounded-2xl bg-secondary text-muted-foreground text-sm font-semibold active:opacity-60"
+          >
+            Cancel
+          </button>
           <button
             onClick={handleAdd}
-            disabled={mode === "preset" ? !selected : !customName || !customIssuer}
-            className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-40"
+            disabled={!canAdd}
+            className="flex-1 py-3.5 rounded-2xl text-black text-sm font-semibold disabled:opacity-35 active:opacity-70"
+            style={{background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}
           >
             Add Card
           </button>
@@ -532,12 +434,8 @@ function AddCardSheet({
     </div>
   );
 }
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-interface Props {
-  expenses: Expense[];
-  userProfile: UserProfile;
-}
+// ─── Main CreditCardHub Component ────────────────────────────────────────────
+interface Props { expenses: Expense[]; userProfile: UserProfile; }
 
 export function CreditCardHub({ expenses, userProfile }: Props) {
   const [cards, setCards] = useState<UserCard[]>(() => loadCards(userProfile?.id));
@@ -547,177 +445,128 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
 
   const persistAdd = (card: UserCard) => {
     const next = [...cards, card];
-    setCards(next);
-    saveCards(next, userProfile?.id);
-    setShowAdd(false);
+    setCards(next); saveCards(next, userProfile?.id); setShowAdd(false);
   };
-
   const removeCard = (id: string) => {
-    const next = cards.filter((c) => c.id !== id);
-    setCards(next);
-    saveCards(next, userProfile?.id);
+    const next = cards.filter(c => c.id !== id);
+    setCards(next); saveCards(next, userProfile?.id);
   };
 
-  // ── Category → best card mapping ──
-  const allCategories = [...new Set(expenses.map((e) => mapCategory(e.category)))];
+  const allCategories = [...new Set(expenses.map(e => mapCategory(e.category)))];
   const categoryTotals: Record<string, number> = {};
-  for (const e of expenses) {
-    const cat = mapCategory(e.category);
-    categoryTotals[cat] = (categoryTotals[cat] || 0) + e.amount;
-  }
+  for (const e of expenses) { const c = mapCategory(e.category); categoryTotals[c] = (categoryTotals[c] || 0) + e.amount; }
 
-  // ── Total rewards earned (estimated) ──
   const totalRewards = expenses.reduce((sum, e) => {
     const best = getBestCard(cards, e.category);
     return best ? sum + getEffectiveCashback(best, e.category, e.amount) : sum;
   }, 0);
-
   const totalFees = cards.reduce((s, c) => s + c.annualFee / 12, 0);
   const netRewards = totalRewards - totalFees;
-
-  // ── Next card recommendation ──
   const recommendation = recommendNextCard(cards, expenses);
-
-  // ── Utilization alerts ──
   const utilizationAlerts = cards
-    .filter((c) => c.creditLimit && c.currentBalance)
-    .map((c) => {
-      const pct = ((c.currentBalance! / c.creditLimit!) * 100);
-      return { card: c, pct };
-    })
-    .filter((a) => a.pct > 30);
+    .filter(c => c.creditLimit && c.currentBalance)
+    .map(c => ({ card: c, pct: (c.currentBalance! / c.creditLimit!) * 100 }))
+    .filter(a => a.pct > 30);
 
   return (
     <div className="space-y-4 animate-in-up">
-      {/* Header bar */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-foreground">Credit Card <span className="text-gradient-gold">Hub</span></h2>
-          <p className="text-xs text-muted-foreground">Maximize every swipe</p>
+          <h2 className="text-lg font-bold">Credit Card <span className="text-gradient-gold">Hub</span></h2>
+          <p className="text-xs text-muted-foreground">Maximise every swipe</p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-1.5 text-black text-xs font-semibold px-3 py-2 rounded-xl" style={{background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}
+          className="flex items-center gap-1.5 text-black text-xs font-semibold px-4 py-2.5 rounded-xl active:opacity-70"
+          style={{background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}
         >
           <Plus size={13} /> Add Card
         </button>
       </div>
 
-      {/* Summary row */}
+      {/* Summary */}
       {cards.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
-          <div className="glass rounded-xl p-3 text-center">
-            <p className="text-xs text-muted-foreground">Est. Rewards</p>
-            <p className="text-base font-bold text-primary">${totalRewards.toFixed(2)}</p>
-            <p className="text-[10px] text-muted-foreground">this period</p>
-          </div>
-          <div className="glass rounded-xl p-3 text-center">
-            <p className="text-xs text-muted-foreground">Annual Fees</p>
-            <p className="text-base font-bold text-amber-400">${(totalFees * 12).toFixed(0)}/yr</p>
-            <p className="text-[10px] text-muted-foreground">${totalFees.toFixed(2)}/mo</p>
-          </div>
-          <div className="glass rounded-xl p-3 text-center">
-            <p className="text-xs text-muted-foreground">Net Value</p>
-            <p className={`text-base font-bold ${netRewards >= 0 ? "text-primary" : "text-destructive"}`}>
-              ${netRewards.toFixed(2)}
-            </p>
-            <p className="text-[10px] text-muted-foreground">rewards − fees</p>
-          </div>
+          {[
+            { label:"Est. Rewards", value:`$${totalRewards.toFixed(2)}`, sub:"this period", cx:"text-primary" },
+            { label:"Annual Fees", value:`$${(totalFees*12).toFixed(0)}/yr`, sub:`$${totalFees.toFixed(2)}/mo`, cx:"text-amber-400" },
+            { label:"Net Value", value:`$${netRewards.toFixed(2)}`, sub:"rewards − fees", cx:netRewards>=0?"text-primary":"text-destructive" },
+          ].map(s => (
+            <div key={s.label} className="glass rounded-xl p-3 text-center">
+              <p className="text-xs text-muted-foreground">{s.label}</p>
+              <p className={`text-sm font-bold ${s.cx}`}>{s.value}</p>
+              <p className="text-[10px] text-muted-foreground">{s.sub}</p>
+            </div>
+          ))}
         </div>
       )}
 
       {/* Section tabs */}
       <div className="flex bg-secondary rounded-xl p-1 gap-1">
         {([
-          { id: "cards", label: "My Cards", icon: CreditCard },
-          { id: "optimizer", label: "Optimizer", icon: Zap },
-          { id: "next", label: "Next Card", icon: Sparkles },
-        ] as const).map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setActiveSection(id)}
-            className={`flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-              activeSection === id ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-            }`}
-          >
+          { id:"cards", label:"My Cards", icon:CreditCard },
+          { id:"optimizer", label:"Optimizer", icon:Zap },
+          { id:"next", label:"Next Card", icon:Sparkles },
+        ] as const).map(({ id, label, icon:Icon }) => (
+          <button key={id} onClick={() => setActiveSection(id)}
+            className={`flex-1 flex items-center justify-center gap-1 py-2 text-xs font-medium rounded-lg transition-colors ${activeSection===id ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>
             <Icon size={12} /> {label}
           </button>
         ))}
       </div>
 
-      {/* ── MY CARDS ── */}
+      {/* MY CARDS */}
       {activeSection === "cards" && (
         <div className="space-y-3">
           {cards.length === 0 ? (
             <div className="glass rounded-xl p-8 text-center">
               <CreditCard size={32} className="text-muted-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">No cards added yet.</p>
-              <button onClick={() => setShowAdd(true)} className="mt-3 text-primary text-sm font-medium underline underline-offset-2">
-                Add your first card →
-              </button>
+              <button onClick={() => setShowAdd(true)} className="mt-3 text-primary text-sm font-medium underline underline-offset-2">Add your first card →</button>
             </div>
           ) : (
-            cards.map((card) => {
-              const util = card.creditLimit && card.currentBalance
-                ? (card.currentBalance / card.creditLimit) * 100
-                : null;
-              const bonusPct = card.signupBonus && card.signupSpend
-                ? Math.min(100, ((card.spentTowardBonus || 0) / card.signupSpend) * 100)
-                : null;
+            cards.map(card => {
+              const util = card.creditLimit && card.currentBalance ? (card.currentBalance / card.creditLimit) * 100 : null;
+              const bonusPct = card.signupBonus && card.signupSpend ? Math.min(100, ((card.spentTowardBonus || 0) / card.signupSpend) * 100) : null;
               const isExpanded = expandedCard === card.id;
-
               return (
                 <div key={card.id} className="glass rounded-xl overflow-hidden">
                   <div className="p-3">
                     <div className="flex gap-3 items-start">
-                      <div className="w-28 shrink-0">
-                        <CardVisual card={card} />
-                      </div>
+                      <div className="w-28 shrink-0"><CardVisual card={card} /></div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-1">
                           <div>
-                            <p className="text-sm font-bold text-foreground leading-tight">{card.issuer} {card.name}</p>
+                            <p className="text-sm font-bold leading-tight">{card.issuer} {card.name}</p>
                             <p className="text-xs text-muted-foreground">{card.network} · ${card.annualFee}/yr</p>
                           </div>
                           <div className="flex items-center gap-1">
-                            <button onClick={() => setExpandedCard(isExpanded ? null : card.id)} className="p-1 text-muted-foreground">
+                            <button onClick={() => setExpandedCard(isExpanded ? null : card.id)} className="p-2.5 rounded-xl text-muted-foreground active:bg-secondary">
                               {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                             </button>
-                            <button onClick={() => removeCard(card.id)} className="p-1 text-muted-foreground hover:text-destructive">
+                            <button onClick={() => removeCard(card.id)} className="p-2.5 rounded-xl text-muted-foreground active:text-destructive">
                               <Trash2 size={13} />
                             </button>
                           </div>
                         </div>
-
-                        {/* Base reward chip */}
                         <div className="flex flex-wrap gap-1 mt-2">
-                          <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">
-                            {card.baseReward}{card.rewardType === "cashback" ? "%" : "x"} base
-                          </span>
-                          {Object.entries(card.rewards).slice(0, 2).map(([cat, rate]) => (
-                            <span key={cat} className="text-[10px] bg-amber-400/15 text-amber-400 px-2 py-0.5 rounded-full font-medium">
-                              {rate}x {cat}
-                            </span>
+                          <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-medium">{card.baseReward}{card.rewardType==="cashback"?"%":"x"} base</span>
+                          {Object.entries(card.rewards).slice(0,2).map(([cat,rate]) => (
+                            <span key={cat} className="text-[10px] bg-amber-400/15 text-amber-400 px-2 py-0.5 rounded-full font-medium">{rate}x {cat}</span>
                           ))}
                         </div>
-
-                        {/* Utilization */}
                         {util !== null && (
                           <div className="mt-2">
                             <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
                               <span>Utilization</span>
-                              <span className={util > 30 ? "text-destructive" : "text-primary"}>{util.toFixed(0)}%</span>
+                              <span className={util>30?"text-destructive":"text-primary"}>{util.toFixed(0)}%</span>
                             </div>
                             <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full ${util > 30 ? "bg-destructive" : "bg-primary"}`}
-                                style={{ width: `${Math.min(100, util)}%` }}
-                              />
+                              <div className={`h-full rounded-full ${util>30?"bg-destructive":"bg-primary"}`} style={{width:`${Math.min(100,util)}%`}} />
                             </div>
                           </div>
                         )}
-
-                        {/* Signup bonus progress */}
                         {bonusPct !== null && (
                           <div className="mt-2">
                             <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
@@ -725,7 +574,7 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
                               <span className="text-amber-400">{bonusPct.toFixed(0)}%</span>
                             </div>
                             <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
-                              <div className="h-full rounded-full bg-accent" style={{ width: `${bonusPct}%` }} />
+                              <div className="h-full rounded-full bg-amber-400" style={{width:`${bonusPct}%`}} />
                             </div>
                             <p className="text-[10px] text-muted-foreground mt-0.5">{card.signupBonus}</p>
                           </div>
@@ -733,21 +582,19 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
                       </div>
                     </div>
                   </div>
-
-                  {/* Expanded rewards detail */}
                   {isExpanded && (
                     <div className="border-t border-border px-3 py-3 space-y-2">
-                      <p className="text-xs font-semibold text-foreground">All Reward Categories</p>
+                      <p className="text-xs font-semibold">All Reward Categories</p>
                       <div className="grid grid-cols-2 gap-1.5">
                         {Object.entries(card.rewards).map(([cat, rate]) => (
-                          <div key={cat} className="bg-secondary rounded-lg px-2 py-1.5 flex justify-between items-center">
-                            <span className="text-xs text-foreground">{cat}</span>
-                            <span className="text-xs font-bold text-amber-400">{rate}{card.rewardType === "cashback" ? "%" : "x"}</span>
+                          <div key={cat} className="bg-secondary rounded-lg px-2 py-1.5 flex justify-between">
+                            <span className="text-xs">{cat}</span>
+                            <span className="text-xs font-bold text-amber-400">{rate}{card.rewardType==="cashback"?"%":"x"}</span>
                           </div>
                         ))}
-                        <div className="bg-secondary rounded-lg px-2 py-1.5 flex justify-between items-center">
-                          <span className="text-xs text-foreground">Everything else</span>
-                          <span className="text-xs font-bold text-primary">{card.baseReward}{card.rewardType === "cashback" ? "%" : "x"}</span>
+                        <div className="bg-secondary rounded-lg px-2 py-1.5 flex justify-between">
+                          <span className="text-xs">Everything else</span>
+                          <span className="text-xs font-bold text-primary">{card.baseReward}{card.rewardType==="cashback"?"%":"x"}</span>
                         </div>
                       </div>
                       {card.signupBonus && (
@@ -763,18 +610,14 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
               );
             })
           )}
-
-          {/* Interest / utilization alerts */}
           {utilizationAlerts.length > 0 && (
             <div className="glass rounded-xl p-4 border border-destructive/30 space-y-2">
-              <p className="text-sm font-semibold text-destructive flex items-center gap-1.5">
-                <AlertTriangle size={14} /> High Utilization Alert
-              </p>
+              <p className="text-sm font-semibold text-destructive flex items-center gap-1.5"><AlertTriangle size={14} /> High Utilization Alert</p>
               {utilizationAlerts.map(({ card, pct }) => (
                 <div key={card.id} className="text-xs text-muted-foreground">
                   <span className="text-foreground font-medium">{card.issuer} {card.name}</span> is at{" "}
-                  <span className="text-destructive font-bold">{pct.toFixed(0)}%</span> utilization.{" "}
-                  {pct > 30 && pct <= 50 ? "Try to pay down to below 30% to protect your credit score." : "High utilization significantly hurts your credit score. Pay down ASAP."}
+                  <span className="text-destructive font-bold">{pct.toFixed(0)}%</span>.{" "}
+                  {pct<=50 ? "Pay down below 30% to protect your credit score." : "High utilization hurts your score. Pay down ASAP."}
                 </div>
               ))}
             </div>
@@ -782,72 +625,44 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
         </div>
       )}
 
-      {/* ── OPTIMIZER ── */}
+      {/* OPTIMIZER */}
       {activeSection === "optimizer" && (
         <div className="space-y-3">
           {cards.length === 0 ? (
-            <div className="glass rounded-xl p-8 text-center">
-              <Zap size={32} className="text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">Add your cards first to see per-category recommendations.</p>
-            </div>
+            <div className="glass rounded-xl p-8 text-center"><Zap size={32} className="text-muted-foreground mx-auto mb-3" /><p className="text-sm text-muted-foreground">Add your cards first.</p></div>
           ) : allCategories.length === 0 ? (
-            <div className="glass rounded-xl p-8 text-center">
-              <p className="text-sm text-muted-foreground">No expenses logged yet. Add some expenses to see optimized card suggestions.</p>
-            </div>
+            <div className="glass rounded-xl p-8 text-center"><p className="text-sm text-muted-foreground">Add expenses to see card suggestions.</p></div>
           ) : (
             <>
-              <p className="text-xs text-muted-foreground">Based on your expense history — use these cards to maximize rewards:</p>
-              {allCategories
-                .sort((a, b) => (categoryTotals[b] || 0) - (categoryTotals[a] || 0))
-                .map((cat) => {
-                  const best = getBestCard(cards, cat);
-                  if (!best) return null;
-                  const rate = getCardRate(best, cat);
-                  const effectiveRate = rate * best.centsPerPoint;
-                  const spend = categoryTotals[cat] || 0;
-                  const earned = getEffectiveCashback(best, cat, spend);
-
-                  return (
-                    <div key={cat} className="glass rounded-xl p-4 flex items-center gap-3">
-                      <div className="w-20 shrink-0">
-                        <CardVisual card={best} small />
+              <p className="text-xs text-muted-foreground">Use these cards to maximise rewards by category:</p>
+              {allCategories.sort((a,b)=>(categoryTotals[b]||0)-(categoryTotals[a]||0)).map(cat => {
+                const best = getBestCard(cards, cat);
+                if (!best) return null;
+                const rate = getCardRate(best, cat);
+                const effectiveRate = rate * best.centsPerPoint;
+                const spend = categoryTotals[cat] || 0;
+                const earned = getEffectiveCashback(best, cat, spend);
+                return (
+                  <div key={cat} className="glass rounded-xl p-4 flex items-center gap-3">
+                    <div className="w-20 shrink-0"><CardVisual card={best} small /></div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-1 mb-1">
+                        <p className="text-sm font-semibold">{cat}</p>
+                        <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-bold shrink-0">{effectiveRate.toFixed(1)}%</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-1 mb-1">
-                          <p className="text-sm font-semibold text-foreground">{cat}</p>
-                          <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-bold shrink-0">
-                            {effectiveRate.toFixed(1)}%
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground leading-tight">
-                          Use <span className="text-foreground font-medium">{best.issuer} {best.name}</span> for {rate}{best.rewardType === "cashback" ? "%" : "x"} {best.rewardType}
-                        </p>
-                        <p className="text-xs text-primary font-medium mt-1">
-                          +${earned.toFixed(2)} earned on ${spend.toFixed(0)} spent
-                        </p>
-                      </div>
+                      <p className="text-xs text-muted-foreground">Use <span className="text-foreground font-medium">{best.issuer} {best.name}</span> for {rate}{best.rewardType==="cashback"?"%":"x"}</p>
+                      <p className="text-xs text-primary font-medium mt-1">+${earned.toFixed(2)} on ${spend.toFixed(0)} spent</p>
                     </div>
-                  );
-                })}
-
-              {/* Interest avoidance tips */}
+                  </div>
+                );
+              })}
               <div className="glass rounded-xl p-4 space-y-2 border border-primary/20">
-                <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                  <ShieldCheck size={14} className="text-primary" /> Interest Avoidance Tips
-                </p>
+                <p className="text-sm font-semibold flex items-center gap-1.5"><ShieldCheck size={14} className="text-primary" /> Interest Tips</p>
                 <ul className="space-y-1.5">
-                  {[
-                    "Pay your full statement balance every month to avoid interest charges (usually 20–29% APR).",
-                    "Set up autopay for at least the minimum to never miss a payment.",
-                    "If carrying a balance, prioritize the highest APR card first (avalanche method).",
-                    cards.some((c) => c.annualFee > 0)
-                      ? `Your paid cards cost $${cards.filter((c) => c.annualFee > 0).reduce((s, c) => s + c.annualFee, 0)}/yr — make sure rewards exceed fees.`
-                      : "All your cards are no-fee. Great for building credit with zero cost!",
-                  ].map((tip, i) => (
-                    <li key={i} className="text-xs text-muted-foreground flex gap-2">
-                      <span className="text-primary font-bold shrink-0 mt-0.5">·</span>
-                      {tip}
-                    </li>
+                  {["Pay your full statement balance monthly to avoid 20–29% APR interest.","Set up autopay for at least the minimum to never miss a payment.","If carrying a balance, pay the highest APR card first (avalanche method).",
+                    cards.some(c=>c.annualFee>0) ? `Paid cards cost $${cards.filter(c=>c.annualFee>0).reduce((s,c)=>s+c.annualFee,0)}/yr — ensure rewards exceed fees.` : "All your cards are no-fee. Great for building credit at zero cost!"
+                  ].map((tip,i) => (
+                    <li key={i} className="text-xs text-muted-foreground flex gap-2"><span className="text-primary font-bold shrink-0 mt-0.5">·</span>{tip}</li>
                   ))}
                 </ul>
               </div>
@@ -856,74 +671,56 @@ export function CreditCardHub({ expenses, userProfile }: Props) {
         </div>
       )}
 
-      {/* ── NEXT CARD ── */}
+      {/* NEXT CARD */}
       {activeSection === "next" && (
         <div className="space-y-3">
           {recommendation ? (
             <>
               <div className="glass rounded-xl overflow-hidden">
                 <div className="p-4">
-                  <p className="text-xs font-semibold text-amber-400 flex items-center gap-1 mb-3">
-                    <Sparkles size={11} /> Recommended Next Card
-                  </p>
+                  <p className="text-xs font-semibold text-amber-400 flex items-center gap-1 mb-3"><Sparkles size={11} /> Recommended Next Card</p>
                   <div className="flex gap-3 items-start">
-                    <div className="w-28 shrink-0">
-                      <CardVisual card={{ ...recommendation.card, id: recommendation.card.id }} small={false} />
-                    </div>
+                    <div className="w-28 shrink-0"><CardVisual card={recommendation.card as any} /></div>
                     <div className="flex-1">
-                      <p className="text-sm font-bold text-foreground">{recommendation.card.issuer} {recommendation.card.name}</p>
+                      <p className="text-sm font-bold">{recommendation.card.issuer} {recommendation.card.name}</p>
                       <p className="text-xs text-muted-foreground">{recommendation.card.network} · ${recommendation.card.annualFee}/yr</p>
                       <div className="flex flex-wrap gap-1 mt-2">
-                        {Object.entries(recommendation.card.rewards).slice(0, 3).map(([cat, rate]) => (
-                          <span key={cat} className="text-[10px] bg-amber-400/15 text-amber-400 px-2 py-0.5 rounded-full">
-                            {rate}x {cat}
-                          </span>
+                        {Object.entries(recommendation.card.rewards).slice(0,3).map(([cat,rate]) => (
+                          <span key={cat} className="text-[10px] bg-amber-400/15 text-amber-400 px-2 py-0.5 rounded-full">{rate}x {cat}</span>
                         ))}
                       </div>
                     </div>
                   </div>
                   <div className="mt-3 bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
-                    <p className="text-xs text-foreground font-medium flex items-center gap-1.5">
-                      <TrendingUp size={11} className="text-primary" /> Why this card?
-                    </p>
+                    <p className="text-xs font-medium flex items-center gap-1.5"><TrendingUp size={11} className="text-primary" /> Why this card?</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{recommendation.reason}</p>
                   </div>
                   {recommendation.card.signupBonus && (
                     <div className="mt-2 bg-amber-400/10 border border-amber-400/20 rounded-lg px-3 py-2">
-                      <p className="text-xs text-amber-400 font-medium flex items-center gap-1.5">
-                        <Gift size={11} /> Signup Bonus
-                      </p>
+                      <p className="text-xs text-amber-400 font-medium flex items-center gap-1.5"><Gift size={11} /> Signup Bonus</p>
                       <p className="text-xs text-muted-foreground">{recommendation.card.signupBonus}</p>
-                      {recommendation.card.signupSpend && (
-                        <p className="text-[10px] text-muted-foreground mt-0.5">Spend ${recommendation.card.signupSpend.toLocaleString()} in first few months</p>
-                      )}
+                      {recommendation.card.signupSpend && <p className="text-[10px] text-muted-foreground mt-0.5">Spend ${recommendation.card.signupSpend.toLocaleString()} in first few months</p>}
                     </div>
                   )}
                 </div>
               </div>
-
-              {/* Other available cards */}
               <p className="text-xs text-muted-foreground font-medium">Other cards you don't have yet</p>
               <div className="grid grid-cols-2 gap-2">
-                {PRESET_CARDS.filter((p) => !cards.some((c) => c.presetId === p.id) && p.id !== recommendation.card.id)
-                  .slice(0, 4)
-                  .map((p) => (
-                    <div key={p.id} className="glass rounded-xl p-3">
-                      <CardVisual card={p} small />
-                      <p className="text-xs font-semibold text-foreground mt-1.5 leading-tight">{p.issuer} {p.name}</p>
-                      <p className="text-[10px] text-muted-foreground">${p.annualFee}/yr · {p.baseReward}{p.rewardType === "cashback" ? "%" : "x"} base</p>
-                      {p.signupBonus && <p className="text-[10px] text-amber-400 mt-0.5">🎁 {p.signupBonus}</p>}
-                    </div>
-                  ))}
+                {PRESET_CARDS.filter(p => !cards.some(c=>c.presetId===p.id) && p.id!==recommendation.card.id).slice(0,4).map(p => (
+                  <div key={p.id} className="glass rounded-xl p-3">
+                    <CardVisual card={p} small />
+                    <p className="text-xs font-semibold mt-1.5 leading-tight">{p.issuer} {p.name}</p>
+                    <p className="text-[10px] text-muted-foreground">${p.annualFee}/yr · {p.baseReward}{p.rewardType==="cashback"?"%":"x"}</p>
+                    {p.signupBonus && <p className="text-[10px] text-amber-400 mt-0.5">🎁 {p.signupBonus}</p>}
+                  </div>
+                ))}
               </div>
             </>
           ) : (
             <div className="glass rounded-xl p-8 text-center">
               <Sparkles size={32} className="text-muted-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">
-                {cards.length === 0
-                  ? "Add your existing cards first so we can recommend your next one."
-                  : "You already have all the top cards in our catalogue! 🎉"}
+                {cards.length === 0 ? "Add your existing cards first so we can recommend your next one." : "You already have all the top cards in our catalogue! 🎉"}
               </p>
             </div>
           )}
