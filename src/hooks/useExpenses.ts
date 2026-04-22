@@ -43,6 +43,24 @@ interface HubCard {
   rewards?: Record<string, unknown>;
 }
 
+// Returns today's date as "YYYY-MM-DD" in LOCAL time (not UTC).
+// new Date().toISOString() returns UTC — in US timezones after ~7pm this
+// gives tomorrow's date. This function always gives the correct local date.
+export function localDateString(date: Date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// Parse a stored "YYYY-MM-DD" date string into {year, month, day} without
+// timezone conversion. new Date("2026-04-01") treats it as UTC midnight
+// which becomes March 31 in US timezones — this avoids that entirely.
+export function parseDateString(dateStr: string): { year: number; month: number; day: number } {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return { year: y, month: m, day: d };
+}
+
 export const CATEGORIES: Category[] = [
   "Food & Dining",
   "Transport",
@@ -298,8 +316,10 @@ export function useExpenses(userId?: string) {
 
   const getMonthExpenses = useCallback((year: number, month: number) => {
     return expenses.filter((e) => {
-      const d = new Date(e.date);
-      return d.getFullYear() === year && d.getMonth() + 1 === month;
+      // Parse date string directly — avoids UTC-midnight timezone shift
+      // new Date("2026-04-01") = UTC midnight = March 31 in US timezones
+      const [y, m] = e.date.split("-").map(Number);
+      return y === year && m === month;
     });
   }, [expenses]);
 

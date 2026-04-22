@@ -31,8 +31,12 @@ function generateInsights(expenses: Expense[], totalByCategory: Partial<Record<C
   const savings = monthTotal * 0.15;
   insights.push({ type: "invest", title: "Investment opportunity", body: `Cutting 15% ($${savings.toFixed(0)}/mo) invested at 8% = ~$${(savings * 12 * 14.49).toFixed(0)} over 10 years.`, icon: <TrendingUp size={15} />, color: "text-primary", accent: "border-primary/20 bg-primary/5" });
 
-  const avgPerDay = monthTotal / 18;
-  insights.push({ type: "trend", title: "Month-end forecast", body: `At $${avgPerDay.toFixed(1)}/day you'll spend ~$${(avgPerDay * 28).toFixed(0)} this month.`, icon: <Sparkles size={15} />, color: "text-amber-400", accent: "border-amber-400/20 bg-amber-400/5" });
+  const today = new Date();
+  const dayOfMonth = today.getDate();
+  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+  const avgPerDay = dayOfMonth > 0 ? monthTotal / dayOfMonth : 0;
+  const projected = Math.round(avgPerDay * daysInMonth);
+  insights.push({ type: "trend", title: "Month-end forecast", body: `At $${avgPerDay.toFixed(1)}/day (${dayOfMonth} days in), you'll spend ~$${projected.toFixed(0)} this month.`, icon: <Sparkles size={15} />, color: "text-amber-400", accent: "border-amber-400/20 bg-amber-400/5" });
 
   const second = sorted[1];
   if (second) {

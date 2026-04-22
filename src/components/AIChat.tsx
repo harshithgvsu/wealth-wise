@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { MessageSquare, X, Send, Mic, MicOff, Bot, User, Loader2 } from "lucide-react";
-import { Expense, CATEGORIES, Category, getExpenseCardOptions } from "@/hooks/useExpenses";
+import { Expense, CATEGORIES, Category, getExpenseCardOptions, localDateString, parseDateString } from "@/hooks/useExpenses";
 import { UserProfile } from "@/hooks/useAuth";
 
 interface Message { id: string; role: "user" | "assistant"; content: string; timestamp: number; }
@@ -10,7 +10,7 @@ function generateAIResponse(msg: string, expenses: Expense[], profile: UserProfi
   const m = msg.toLowerCase();
   const now = new Date();
   const cm = now.getMonth() + 1, cy = now.getFullYear();
-  const monthExp = expenses.filter(e => { const d = new Date(e.date); return d.getFullYear() === cy && d.getMonth() + 1 === cm; });
+  const monthExp = expenses.filter(e => { const { year, month } = parseDateString(e.date); return year === cy && month === cm; });
   const total = monthExp.reduce((s, e) => s + e.amount, 0);
   const byCat: Partial<Record<Category, number>> = {};
   for (const e of monthExp) byCat[e.category] = (byCat[e.category] || 0) + e.amount;
@@ -87,7 +87,7 @@ function parseExpense(text: string, userId?: string): Omit<Expense, "id" | "crea
     .replace(/\b(spent|spend|paid|pay|for|on|added?|logged?|using|use|with)\b/gi, "")
     .replace(/\s+/g, " ").trim() || `${category} expense`;
 
-  return { amount, category, description: desc.charAt(0).toUpperCase() + desc.slice(1), date: new Date().toISOString().split("T")[0], cardId: matched?.id, cardLabel: matched?.label };
+  return { amount, category, description: desc.charAt(0).toUpperCase() + desc.slice(1), date: localDateString(), cardId: matched?.id, cardLabel: matched?.label };
 }
 
 export function AIChat({ expenses, userProfile, onAddExpense }: AIChatProps) {
@@ -149,7 +149,8 @@ export function AIChat({ expenses, userProfile, onAddExpense }: AIChatProps) {
   return (
     <>
       <button onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center pulse-glow hover:opacity-90 transition-opacity text-black shadow-xl"
+        className="fixed right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center pulse-glow hover:opacity-90 transition-opacity text-black shadow-xl"
+        style={{bottom:"calc(1.5rem + env(safe-area-inset-bottom, 0px))"}}
         style={{background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}>
         <MessageSquare size={20} />
       </button>
@@ -168,7 +169,7 @@ export function AIChat({ expenses, userProfile, onAddExpense }: AIChatProps) {
                 <p className="text-sm font-bold" style={{fontFamily:"'Syne',sans-serif"}}>WealthWise AI</p>
                 <p className="text-xs text-muted-foreground">Financial Assistant</p>
               </div>
-              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+              <button onClick={() => setOpen(false)} className="p-2 -mr-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
                 <X size={17} />
               </button>
             </div>

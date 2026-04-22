@@ -1,5 +1,5 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { Expense, CATEGORY_COLORS, Category } from "@/hooks/useExpenses";
+import { Expense, CATEGORY_COLORS, Category, localDateString } from "@/hooks/useExpenses";
 
 interface SpendingChartProps {
   expenses: Expense[];
@@ -31,7 +31,7 @@ export function SpendingChart({ expenses, totalByCategory }: SpendingChartProps)
   const dailyData = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today);
     d.setDate(d.getDate() - (13 - i));
-    const dateStr = d.toISOString().split("T")[0];
+    const dateStr = localDateString(d);
     return {
       date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
       amount: expenses.filter((e) => e.date === dateStr).reduce((s, e) => s + e.amount, 0),

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CardOption, CATEGORIES, Category, DEFAULT_CARD_OPTION, calculateRewards } from "@/hooks/useExpenses";
+import { CardOption, CATEGORIES, Category, DEFAULT_CARD_OPTION, calculateRewards, localDateString } from "@/hooks/useExpenses";
 
 interface ExpenseFormProps {
   cardOptions: CardOption[];
@@ -18,7 +18,7 @@ interface ExpenseFormProps {
 const fieldCx = "bg-secondary border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-primary/20";
 
 export function ExpenseForm({ onAdd, cardOptions, userId }: ExpenseFormProps) {
-  const today = new Date().toISOString().split("T")[0];
+  const today = localDateString();
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<Category | "">("");
   const [description, setDescription] = useState("");
@@ -40,6 +40,10 @@ export function ExpenseForm({ onAdd, cardOptions, userId }: ExpenseFormProps) {
     }
     const parsed = parseFloat(amount);
     if (isNaN(parsed) || parsed <= 0) return;
+    // iOS Safari ignores max= on date inputs — validate in JS too
+    if (date > today) {
+      setShake(true); setTimeout(() => setShake(false), 400); return;
+    }
     const selectedCard = cardOptions.find((c) => c.id === cardId);
     const rewardMeta = calculateRewards(parsed, cardId, category as Category, userId);
     onAdd({ amount: parsed, category: category as Category, description, date, cardId, cardLabel: selectedCard?.label, rewardRate: rewardMeta.rate, rewardsEarned: rewardMeta.rewardsEarned });
