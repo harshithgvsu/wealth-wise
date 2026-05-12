@@ -178,8 +178,9 @@ export function AIChat({ expenses, userProfile, onAddExpense }: AIChatProps) {
     <>
       <button onClick={() => setOpen(true)}
         className="fixed right-5 z-50 w-14 h-14 rounded-full flex items-center justify-center pulse-glow hover:opacity-90 transition-opacity text-black shadow-xl"
-        style={{bottom:"calc(4.75rem + env(safe-area-inset-bottom, 0px))"}}
-        style={{background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}>
+        // style={{bottom:"calc(4.75rem + env(safe-area-inset-bottom, 0px))"}}
+        // style={{background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}
+        style={{bottom:"calc(4.75rem + env(safe-area-inset-bottom, 0px))", background:"linear-gradient(135deg,hsl(185,100%,40%),hsl(195,100%,55%))"}}>
         <MessageSquare size={20} />
       </button>
 

@@ -150,6 +150,12 @@ export function localDateString(date: Date = new Date()): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
+// Parse YYYY-MM-DD string into a local Date (avoids UTC midnight → day-off bug)
+export function parseDateString(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 // ── API helper ─────────────────────────────────────────────────────────────
 async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
   const token = localStorage.getItem(TOKEN_KEY);

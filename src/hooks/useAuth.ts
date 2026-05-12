@@ -4,7 +4,7 @@ interface ImportMeta {
   env: Record<string, string | undefined>;
 }
 
-declare const import: { meta: ImportMeta };
+// declare const import: { meta: ImportMeta };
 
 export interface UserProfile {
   id: string;
