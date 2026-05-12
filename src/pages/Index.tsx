@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { migrateLocalData } from "@/utils/migrateLocalData";
 import {
   Wallet, TrendingUp, BarChart3, CalendarDays,
   ChevronLeft, ChevronRight, LayoutDashboard, LineChart,
   Settings, LogOut, CreditCard, Sparkles, AlertTriangle, Zap, PiggyBank, X,
 } from "lucide-react";
 import { getExpenseCardOptions, useExpenses } from "@/hooks/useExpenses";
-import { useAuth, PaycheckRecord } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { StatCard } from "@/components/StatCard";
 import { ExpenseForm } from "@/components/ExpenseForm";
 import { ExpenseList } from "@/components/ExpenseList";
@@ -40,7 +41,7 @@ function getMonthBudget(user: ReturnType<typeof useAuth>["user"], year: number, 
   if (paychecks.length === 0) {
     const fixed = user.rentMortgage + user.carPayment + user.insurancePremiums + user.subscriptions + user.otherFixedExpenses;
     return {
-      paychecks: [] as PaycheckRecord[],
+      paychecks: [] as { id: string; amount: number; date: string }[],
       monthlyIncome: user.netMonthlyIncome,
       monthlySavings: (user.savingsGoalPercent / 100) * user.netMonthlyIncome,
       expenseLimit: Math.max(0, user.netMonthlyIncome - fixed),
@@ -64,6 +65,14 @@ export default function Index() {
   const { expenses, addExpense, deleteExpense, resetExpenses, getMonthExpenses, getTotalByCategory } =
     useExpenses(user?.id);
   const cardOptions = getExpenseCardOptions(user?.id);
+
+  // ── Migration: push any localStorage data to MongoDB on first login ──────
+  useEffect(() => {
+    if (isLoggedIn && user) {
+      const token = localStorage.getItem("ww_token");
+      if (token) migrateLocalData(user.id, token);
+    }
+  }, [isLoggedIn, user?.id]);
 
   if (!isLoggedIn) return <AuthPage onLogin={login} onSignup={signup} onResetPassword={resetPassword} />;
 
@@ -110,7 +119,7 @@ export default function Index() {
     const amount = parseFloat(paycheckInput);
     if (!amount || amount <= 0 || !user) return;
     const today = now.toISOString().split("T")[0];
-    const newEntry: PaycheckRecord = { id: crypto.randomUUID(), amount, date: today };
+    const newEntry = { id: crypto.randomUUID(), amount, date: today };
     updateProfile({ paychecks: [...allPaychecks, newEntry] });
     setPaycheckInput("");
     setDismissedPaycheckPrompt(true);
