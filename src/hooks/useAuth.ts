@@ -1,10 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 
-interface ImportMeta {
-  env: Record<string, string | undefined>;
+export interface PaycheckRecord {
+  id: string;
+  amount: number;
+  date: string; // YYYY-MM-DD
 }
 
-// declare const import: { meta: ImportMeta };
+export interface SavingsAccount {
+  id: string;
+  name: string;
+  amountPerPaycheck: number;
+}
 
 export interface UserProfile {
   id: string;
@@ -24,6 +30,8 @@ export interface UserProfile {
   riskTolerance: "conservative" | "moderate" | "aggressive";
   investmentHorizonYears: number;
   onboardingComplete: boolean;
+  paychecks: PaycheckRecord[];
+  savingsAccounts: SavingsAccount[];
   createdAt: string;
 }
 
@@ -76,6 +84,20 @@ async function apiFetch(path: string, init: RequestInit = {}): Promise<Response>
   });
 }
 
+// Fetch cards from server and write to localStorage so CreditCardHub can read them
+async function syncCardsToLocal(userId: string) {
+  try {
+    const res = await apiFetch("/cards");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.success && Array.isArray(data.cards)) {
+      localStorage.setItem(`ww_cards_${userId}`, JSON.stringify(data.cards));
+    }
+  } catch {
+    console.warn("Cards sync failed");
+  }
+}
+
 // ── Hook ───────────────────────────────────────────────────────────────────
 
 export function useAuth() {
@@ -96,10 +118,11 @@ export function useAuth() {
         if (data.success && data.user) {
           cacheUser(data.user);
           setAuthState({ user: data.user, isLoggedIn: true });
+          // Sync cards to localStorage so CreditCardHub finds them
+          syncCardsToLocal(data.user.id);
         }
       })
       .catch(() => {
-        // Token invalid or expired — force logout
         clearToken();
         setAuthState({ user: null, isLoggedIn: false });
       });
@@ -117,12 +140,12 @@ export function useAuth() {
           body: JSON.stringify({ email, password, name }),
         });
         const data = await res.json();
-
         if (!data.success) return { success: false, error: data.error };
 
         saveToken(data.token);
         cacheUser(data.user);
         setAuthState({ user: data.user, isLoggedIn: true });
+        syncCardsToLocal(data.user.id);
         return { success: true };
       } catch {
         return { success: false, error: "Network error. Check your connection." };
@@ -142,12 +165,13 @@ export function useAuth() {
           body: JSON.stringify({ email, password }),
         });
         const data = await res.json();
-
         if (!data.success) return { success: false, error: data.error };
 
         saveToken(data.token);
         cacheUser(data.user);
         setAuthState({ user: data.user, isLoggedIn: true });
+        // Sync cards to localStorage so CreditCardHub finds them immediately
+        syncCardsToLocal(data.user.id);
         return { success: true };
       } catch {
         return { success: false, error: "Network error. Check your connection." };
@@ -184,7 +208,6 @@ export function useAuth() {
           setAuthState({ user: data.user, isLoggedIn: true });
         }
       } catch {
-        // Optimistic update already applied above — silently fail sync
         console.warn("Profile sync failed, will retry on next load");
       }
     },
