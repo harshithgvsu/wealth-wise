@@ -36,6 +36,7 @@ interface UserCard {
   creditLimit?: number; currentBalance?: number;
   signupBonus?: string; signupSpend?: number; spentTowardBonus?: number;
   id: string;
+  cardType?: "credit" | "debit";
 }
 
 const CARDS_KEY = (userId?: string) => `spendwise_cards_${userId || "default"}`;
@@ -137,6 +138,7 @@ function AddCardSheet({ onAdd, onClose }: { onAdd: (card: UserCard) => void; onC
   const [spentBonus, setSpentBonus] = useState("");
 
   // custom fields
+  const [customCardType, setCustomCardType] = useState<"credit" | "debit">("credit");
   const [customName, setCustomName] = useState("");
   const [customIssuer, setCustomIssuer] = useState("");
   const [customNetwork, setCustomNetwork] = useState<"Visa" | "Mastercard" | "Amex" | "Discover">("Visa");
@@ -179,21 +181,27 @@ function AddCardSheet({ onAdd, onClose }: { onAdd: (card: UserCard) => void; onC
         currentBalance: balance ? Number(balance) : undefined,
         signupBonus: selected.signupBonus, signupSpend: selected.signupSpend,
         spentTowardBonus: spentBonus ? Number(spentBonus) : 0,
+        cardType: "credit",
       });
     } else {
+      const isDebit = customCardType === "debit";
       const rewards: Record<string, number> = {};
-      for (const r of customRewards) { if (r.category && r.rate) rewards[r.category] = Number(r.rate) || 1; }
+      if (!isDebit) {
+        for (const r of customRewards) { if (r.category && r.rate) rewards[r.category] = Number(r.rate) || 1; }
+      }
       const nc = NETWORK_COLORS[customNetwork];
       onAdd({
         id: crypto.randomUUID(), name: customName, issuer: customIssuer,
-        network: customNetwork, annualFee: Number(customFee) || 0,
-        rewardType: customRewardType, baseReward: Number(customBase) || 1,
-        rewards, centsPerPoint: Number(customCPP) || 1,
+        network: customNetwork, annualFee: isDebit ? 0 : (Number(customFee) || 0),
+        rewardType: isDebit ? "cashback" : customRewardType,
+        baseReward: isDebit ? 0 : (Number(customBase) || 1),
+        rewards, centsPerPoint: isDebit ? 1 : (Number(customCPP) || 1),
         cardBg: nc.cardBg, color: nc.color,
         creditLimit: creditLimit ? Number(creditLimit) : undefined,
         currentBalance: balance ? Number(balance) : undefined,
-        signupBonus: customBonus || undefined,
-        signupSpend: customBonusSpend ? Number(customBonusSpend) : undefined,
+        signupBonus: isDebit ? undefined : (customBonus || undefined),
+        signupSpend: isDebit ? undefined : (customBonusSpend ? Number(customBonusSpend) : undefined),
+        cardType: customCardType,
       });
     }
   };
@@ -226,7 +234,7 @@ function AddCardSheet({ onAdd, onClose }: { onAdd: (card: UserCard) => void; onC
 
         {/* Header — never scrolls */}
         <div className="flex-shrink-0 flex items-center justify-between px-5 pt-2 pb-3 border-b border-border">
-          <h2 className="text-base font-bold" style={{fontFamily:"'Syne',sans-serif"}}>Add a Credit Card</h2>
+          <h2 className="text-base font-bold" style={{fontFamily:"'Syne',sans-serif"}}>{mode === "custom" && customCardType === "debit" ? "Add a Debit Card" : "Add a Credit Card"}</h2>
           <button
             onClick={onClose}
             className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-muted-foreground active:opacity-60"
@@ -305,6 +313,20 @@ function AddCardSheet({ onAdd, onClose }: { onAdd: (card: UserCard) => void; onC
           {/* ── CUSTOM MODE ── */}
           {mode === "custom" && (
             <div className="space-y-4">
+              {/* Card type toggle */}
+              <div>
+                <label className={lbl}>Card type</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["credit", "debit"] as const).map(t => (
+                    <button key={t} type="button" onClick={() => setCustomCardType(t)}
+                      className={`py-2.5 rounded-xl text-sm font-medium border transition-all ${
+                        customCardType === t ? "bg-primary/15 border-primary/40 text-primary" : "bg-secondary border-border text-muted-foreground"
+                      }`}>
+                      {t === "credit" ? "Credit" : "Debit"}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div>
                 <label className={lbl}>Card name</label>
                 <input className={inp} placeholder="e.g. My Chase Visa" value={customName} onChange={e => setCustomName(e.target.value)} />
@@ -313,92 +335,96 @@ function AddCardSheet({ onAdd, onClose }: { onAdd: (card: UserCard) => void; onC
                 <label className={lbl}>Issuer (bank)</label>
                 <input className={inp} placeholder="e.g. Chase, Capital One, Citi" value={customIssuer} onChange={e => setCustomIssuer(e.target.value)} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={lbl}>Network</label>
-                  <select className={inp} value={customNetwork} onChange={e => setCustomNetwork(e.target.value as any)}>
-                    {(["Visa","Mastercard","Amex","Discover"] as const).map(n => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className={lbl}>Reward type</label>
-                  <select className={inp} value={customRewardType} onChange={e => setCustomRewardType(e.target.value as any)}>
-                    {(["cashback","points","miles"] as const).map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={lbl}>Annual fee ($)</label>
-                  <input type="number" inputMode="decimal" className={inp} placeholder="0" value={customFee} onChange={e => setCustomFee(e.target.value)} />
-                </div>
-                <div>
-                  <label className={lbl}>Base reward (%/x)</label>
-                  <input type="number" inputMode="decimal" step="0.5" className={inp} placeholder="1" value={customBase} onChange={e => setCustomBase(e.target.value)} />
-                </div>
-              </div>
-              {customRewardType !== "cashback" && (
-                <div>
-                  <label className={lbl}>Cents per point / mile</label>
-                  <input type="number" inputMode="decimal" step="0.1" className={inp} placeholder="1.0" value={customCPP} onChange={e => setCustomCPP(e.target.value)} />
-                </div>
-              )}
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className={lbl + " mb-0"}>Bonus categories</label>
-                  <button
-                    type="button"
-                    onClick={() => setCustomRewards(r => [...r, { category: "", rate: "" }])}
-                    className="text-xs text-primary font-medium flex items-center gap-1 py-1.5 px-3 rounded-lg bg-primary/10 active:opacity-60"
-                  >
-                    <Plus size={12} /> Add
-                  </button>
-                </div>
-                {customRewards.map((r, i) => (
-                  <div key={i} className="flex gap-2 mb-2.5 items-center">
-                    <input
-                      className="flex-1 bg-secondary text-foreground rounded-xl px-3 py-3 border border-border placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
-                      placeholder="e.g. Travel"
-                      value={r.category}
-                      onChange={e => setCustomRewards(rows => rows.map((row, idx) => idx === i ? {...row, category: e.target.value} : row))}
-                    />
-                    <input
-                      type="number" inputMode="decimal" step="0.5"
-                      className="w-20 bg-secondary text-foreground rounded-xl px-3 py-3 border border-border focus:outline-none focus:border-primary/50"
-                      placeholder="3x"
-                      value={r.rate}
-                      onChange={e => setCustomRewards(rows => rows.map((row, idx) => idx === i ? {...row, rate: e.target.value} : row))}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setCustomRewards(rows => rows.filter((_, idx) => idx !== i))}
-                      className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-xl bg-destructive/10 text-destructive active:opacity-60"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                <label className={lbl}>Network</label>
+                <select className={inp} value={customNetwork} onChange={e => setCustomNetwork(e.target.value as any)}>
+                  {(["Visa","Mastercard","Amex","Discover"] as const).map(n => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              {customCardType === "credit" && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={lbl}>Reward type</label>
+                      <select className={inp} value={customRewardType} onChange={e => setCustomRewardType(e.target.value as any)}>
+                        {(["cashback","points","miles"] as const).map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={lbl}>Annual fee ($)</label>
+                      <input type="number" inputMode="decimal" className={inp} placeholder="0" value={customFee} onChange={e => setCustomFee(e.target.value)} />
+                    </div>
                   </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={lbl}>Signup bonus</label>
-                  <input className={inp} placeholder="e.g. 60,000 pts" value={customBonus} onChange={e => setCustomBonus(e.target.value)} />
-                </div>
-                <div>
-                  <label className={lbl}>Required spend ($)</label>
-                  <input type="number" inputMode="decimal" className={inp} placeholder="Optional" value={customBonusSpend} onChange={e => setCustomBonusSpend(e.target.value)} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={lbl}>Credit limit ($)</label>
-                  <input type="number" inputMode="decimal" className={inp} placeholder="Optional" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
-                </div>
-                <div>
-                  <label className={lbl}>Current balance ($)</label>
-                  <input type="number" inputMode="decimal" className={inp} placeholder="Optional" value={balance} onChange={e => setBalance(e.target.value)} />
-                </div>
-              </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={lbl}>Base reward (%/x)</label>
+                      <input type="number" inputMode="decimal" step="0.5" className={inp} placeholder="1" value={customBase} onChange={e => setCustomBase(e.target.value)} />
+                    </div>
+                    {customRewardType !== "cashback" && (
+                      <div>
+                        <label className={lbl}>Cents per point / mile</label>
+                        <input type="number" inputMode="decimal" step="0.1" className={inp} placeholder="1.0" value={customCPP} onChange={e => setCustomCPP(e.target.value)} />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className={lbl + " mb-0"}>Bonus categories</label>
+                      <button
+                        type="button"
+                        onClick={() => setCustomRewards(r => [...r, { category: "", rate: "" }])}
+                        className="text-xs text-primary font-medium flex items-center gap-1 py-1.5 px-3 rounded-lg bg-primary/10 active:opacity-60"
+                      >
+                        <Plus size={12} /> Add
+                      </button>
+                    </div>
+                    {customRewards.map((r, i) => (
+                      <div key={i} className="flex gap-2 mb-2.5 items-center">
+                        <input
+                          className="flex-1 bg-secondary text-foreground rounded-xl px-3 py-3 border border-border placeholder:text-muted-foreground focus:outline-none focus:border-primary/50"
+                          placeholder="e.g. Travel"
+                          value={r.category}
+                          onChange={e => setCustomRewards(rows => rows.map((row, idx) => idx === i ? {...row, category: e.target.value} : row))}
+                        />
+                        <input
+                          type="number" inputMode="decimal" step="0.5"
+                          className="w-20 bg-secondary text-foreground rounded-xl px-3 py-3 border border-border focus:outline-none focus:border-primary/50"
+                          placeholder="3x"
+                          value={r.rate}
+                          onChange={e => setCustomRewards(rows => rows.map((row, idx) => idx === i ? {...row, rate: e.target.value} : row))}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setCustomRewards(rows => rows.filter((_, idx) => idx !== i))}
+                          className="w-11 h-11 flex-shrink-0 flex items-center justify-center rounded-xl bg-destructive/10 text-destructive active:opacity-60"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={lbl}>Signup bonus</label>
+                      <input className={inp} placeholder="e.g. 60,000 pts" value={customBonus} onChange={e => setCustomBonus(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={lbl}>Required spend ($)</label>
+                      <input type="number" inputMode="decimal" className={inp} placeholder="Optional" value={customBonusSpend} onChange={e => setCustomBonusSpend(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={lbl}>Credit limit ($)</label>
+                      <input type="number" inputMode="decimal" className={inp} placeholder="Optional" value={creditLimit} onChange={e => setCreditLimit(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className={lbl}>Current balance ($)</label>
+                      <input type="number" inputMode="decimal" className={inp} placeholder="Optional" value={balance} onChange={e => setBalance(e.target.value)} />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
           {/* Breathing room so last field clears sticky footer */}

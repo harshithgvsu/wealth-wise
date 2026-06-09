@@ -6,6 +6,42 @@ import { UserProfile } from "@/hooks/useAuth";
 interface Message { id: string; role: "user" | "assistant"; content: string; timestamp: number; }
 interface AIChatProps { expenses: Expense[]; userProfile: UserProfile; onAddExpense?: (expense: Omit<Expense, "id" | "createdAt">) => void; }
 
+const API = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const TOKEN_KEY = "ww_token";
+function getToken() { return localStorage.getItem(TOKEN_KEY); }
+
+async function aiChat(message: string, expenses: Expense[], profile: UserProfile, history: Message[]): Promise<string | null> {
+  try {
+    const res = await fetch(`${API}/ai/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ message, expenses, profile, history: history.slice(-8) }),
+    });
+    const data = await res.json();
+    if (data.fallback || !data.reply) return null;
+    return data.reply;
+  } catch {
+    return null;
+  }
+}
+
+async function aiParseExpense(text: string): Promise<{ amount: number; category: Category; description: string; date: string } | null> {
+  try {
+    const res = await fetch(`${API}/ai/parse-expense`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getToken()}` },
+      body: JSON.stringify({ text }),
+    });
+    const data = await res.json();
+    if (data.fallback || !data.parsed) return null;
+    const validCategories: Category[] = ["Food & Dining","Transport","Shopping","Health","Entertainment","Bills & Utilities","Education","Other"];
+    const cat: Category = validCategories.includes(data.parsed.category) ? data.parsed.category : "Other";
+    return { ...data.parsed, category: cat };
+  } catch {
+    return null;
+  }
+}
+
 function generateAIResponse(msg: string, expenses: Expense[], profile: UserProfile): string {
   const m = msg.toLowerCase();
   const now = new Date();
@@ -134,21 +170,29 @@ export function AIChat({ expenses, userProfile, onAddExpense }: AIChatProps) {
 
   const send = async (text: string) => {
     if (!text.trim()) return;
+    const currentMessages = messages;
     setMessages(m => [...m, { id: crypto.randomUUID(), role: "user", content: text, timestamp: Date.now() }]);
     setInput(""); setTyping(true);
 
     const isCmd = /\b(add|log|spent|spend|paid|pay)\b/.test(text.toLowerCase()) && /\$?[\d]+/.test(text);
-    await new Promise(r => setTimeout(r, 500 + Math.random() * 400));
 
     let response = "";
     if (isCmd && onAddExpense) {
-      const parsed = parseExpense(text, userProfile.id);
+      // Try AI parsing first, fall back to regex
+      const aiParsed = await aiParseExpense(text);
+      const parsed = aiParsed
+        ? { ...aiParsed, cardId: undefined, cardLabel: undefined }
+        : parseExpense(text, userProfile.id);
       if (parsed) {
         onAddExpense(parsed);
         response = `✅ Added **$${parsed.amount.toFixed(2)}** to **${parsed.category}** — "${parsed.description}"${parsed.cardLabel ? ` via **${parsed.cardLabel}**` : ""}`;
-      } else response = `Couldn't parse that. Try: "Add $15 lunch food"`;
+      } else {
+        response = `Couldn't parse that. Try: "Add $15 lunch" or "Spent $45 on groceries"`;
+      }
     } else {
-      response = generateAIResponse(text, expenses, userProfile);
+      // Try Claude first, fall back to local logic
+      const aiReply = await aiChat(text, expenses, userProfile, currentMessages);
+      response = aiReply ?? generateAIResponse(text, expenses, userProfile);
     }
 
     setTyping(false);

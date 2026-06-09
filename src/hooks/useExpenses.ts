@@ -18,6 +18,7 @@ export interface CardOption {
   rewardType: RewardType;
   baseRate: number;
   categoryRates?: Partial<Record<Category, number>>;
+  cardType?: "credit" | "debit";
 }
 
 export interface Expense {
@@ -41,6 +42,7 @@ interface HubCard {
   rewardType?: RewardType;
   baseReward?: number;
   rewards?: Record<string, unknown>;
+  cardType?: "credit" | "debit";
 }
 
 export const CATEGORIES: Category[] = [
@@ -118,8 +120,9 @@ export function getExpenseCardOptions(userId?: string): CardOption[] {
           id: card.id,
           label: card.issuer ? `${card.name} (${card.issuer})` : card.name,
           rewardType: card.rewardType || "points",
-          baseRate: Number.isFinite(card.baseReward) ? Number(card.baseReward) : 1,
-          categoryRates,
+          baseRate: card.cardType === "debit" ? 0 : (Number.isFinite(card.baseReward) ? Number(card.baseReward) : 1),
+          categoryRates: card.cardType === "debit" ? {} : categoryRates,
+          cardType: card.cardType,
         };
       });
 
@@ -137,6 +140,9 @@ export function calculateRewards(
 ): { rate: number; rewardType: RewardType; rewardsEarned: number } {
   const options = getExpenseCardOptions(userId);
   const card = options.find((c) => c.id === cardId) || DEFAULT_CARD_OPTION;
+  if (card.cardType === "debit") {
+    return { rate: 0, rewardType: card.rewardType, rewardsEarned: 0 };
+  }
   const rate = card.categoryRates?.[category] ?? card.baseRate;
   return {
     rate,
@@ -230,7 +236,8 @@ export function useExpenses(userId?: string) {
       const cardOptions = getExpenseCardOptions(userId);
       const cardId = expense.cardId || DEFAULT_CARD_OPTION.id;
       const selectedCard = cardOptions.find((c) => c.id === cardId) || DEFAULT_CARD_OPTION;
-      const rewards = calculateRewards(expense.amount, cardId, expense.category, userId);
+      const rewards = calculateRewards(Math.abs(expense.amount), cardId, expense.category, userId);
+      if (expense.amount < 0) rewards.rewardsEarned = -rewards.rewardsEarned;
 
       const newExpense: Expense = {
         ...expense,
